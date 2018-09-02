@@ -1,0 +1,187 @@
+#!/bin/sh
+
+set -euC
+testingdir=$(cd -P "$(dirname "$0")" >/dev/null && pwd)
+
+tmpdir=$(mktemp -d -p "${TMPDIR:-/tmp}" testing.vim.XXXXXXX)
+mkdir -p "$tmpdir"
+trap 'rm -r "$tmpdir"' EXIT
+
+_usage() {
+	echo "Usage: ${0##*/} [-hvc] [-r pattern] [-p path] target"
+	echo
+	echo "Options:"
+	echo "  -h       Show this help."
+	echo
+	echo "  -v       Enable verbose output; exposed as g:test_verbose."
+	echo
+	echo "  -r patt  Run only the test functions matching this pattern."
+	echo "           Patterns are matched against the entire function name"
+	echo "           (including Test_) with the =~# operator."
+	echo
+	echo "  -c       Report code coverage."
+	echo "           This depends on covimerage being in PATH:"
+	echo "           https://github.com/Vimjas/covimerage"
+	echo
+	echo "  -p path  Write code coverage profile to path."
+	echo "           The coverage report is an XML file compatible with Coverage.py"
+	echo "           https://github.com/nedbat/coveragepy"
+	echo
+	echo "  target   File or directory to test."
+	echo "           If it is a directory all *_test.vim files in that directory"
+	echo "           will be run."
+	echo "           Test files in subdirectories will also be run if the pattern"
+	echo "           ends with '/...'"
+}
+
+verbose=0
+coverage=0
+profile=""
+run=""
+while getopts "hvcr:p:" option; do
+	case "$option" in
+		h)
+			_usage
+			exit 0
+			;;
+		v) verbose=1 ;;
+		r) run=$OPTARG ;;
+		c) coverage=1 ;;
+		p)
+			coverage=1
+			profile=$OPTARG
+			;;
+		*)
+			echo "error: unknown option '$option'"
+			_usage
+			exit 1
+			;;
+	esac
+done
+shift $((OPTIND - 1))
+
+if [ "$coverage" -eq 1 ] && ! command -v covimerage >/dev/null; then
+	 echo "covimerage tool not found; install it with:"
+	 echo "  pip install covimerage"
+	 echo "also see https://github.com/Vimjas/covimerage"
+	 exit 1
+fi
+
+# Get path
+if [ -z "${1:-}" ]; then
+	echo "need a file or directory to test"
+	exit 1
+fi
+
+# TODO: allow multiple paths.
+if [ -n "${2:-}" ]; then
+	echo "Only a single file or directory is supported at the moment. Sorry :-("
+	exit 1
+fi
+
+testtarget="$1"
+
+### Run tests.
+##############
+# Clean stale log file.
+[ -f "$tmpdir/test.log" ]        && rm "$tmpdir/test.log"
+[ -f "$tmpdir/FAILED" ]          && rm "$tmpdir/FAILED"
+[ -f "$tmpdir/cov-profile.txt" ] && rm "$tmpdir/cov-profile.txt"
+[ -f "$tmpdir/cov-report.txt" ]  && rm "$tmpdir/cov-report.txt"
+
+# Find files to test.
+
+if echo "$testtarget" | grep -q '/\.\.\.$'; then
+	find_path="${testtarget%...}"
+	find_args="-name *_test.vim"
+elif [ -e "$testtarget" ]; then
+	find_path="${testtarget}"
+	find_args="-maxdepth 1 -name *_test.vim"
+else
+	echo "no such file or directory: $testtarget"
+	exit 1
+fi
+
+vim_cmd=vim
+
+# Generate code coverage report.
+if [ "$coverage" -eq 1 ]; then
+	vim_cmd="covimerage -q run --data-file $tmpdir/cov-profile.data --report-file $tmpdir/cov-profile.txt --append $vim_cmd"
+fi
+
+# Set up package.
+mkdir -p "$tmpdir/pack/t/start"
+
+did_link=0
+files=$(find "$find_path" $find_args)
+IFS="
+"
+
+# Run the actual tests.
+for test_file in $files; do
+	IFS="$(printf ' \n')"
+
+	test_file="${test_file#./}"
+	test_dir=$(dirname "$test_file")
+
+	# Find the plugin's root directory and make sure that the plugin we're
+	# testing is available as a package.
+	if [ "$did_link" -eq 0 ]; then
+		pack="$(cd "$test_dir" && pwd)"
+		while :; do
+			if [ "$pack" = "/" ]; then
+				echo "could not locate the plugin directory for $test_file"
+				exit 2
+			fi
+
+			if [ -d "$pack/autoload" ] || [ -d "$pack/plugin" ] || [ -d "$pack/ftplugin" ]; then
+				ln -s "$pack" "$tmpdir/pack/t/start"
+				did_link=1
+				break
+			fi
+
+			pack="$(dirname "$pack")"
+		done
+	fi
+
+	$vim_cmd --noplugin -u NONE -N -e \
+		+"set shm+=WAFI rtp^=$testingdir packpath=$tmpdir" \
+		+'filetype plugin indent on' \
+		+'packloadall!' \
+		+"silent e $test_file" \
+		+"let g:test_verbose=$verbose" \
+		+"let g:test_tmpdir='$tmpdir'" \
+		+"let g:test_run='$run'" \
+		-S "$testingdir/runtest.vim" </dev/null || (
+		# If Vim exits with non-0 it's almost certainly a bug in the test runner;
+		# should never happen in normal usage.
+		# TODO: not all messages are always shown; i.e. if the error is "too
+		# fatal" to be written to test.tmp.
+		 echo 'TEST RUNNER FAILURE; error in runtest.vim'
+		 [ -f "$tmpdir/test.tmp" ] && cat "$tmpdir/test.tmp"
+		 exit 5
+	)
+
+	# Append logs
+	if [ "$coverage" -eq 1 ]; then
+		cov=$(grep "${test_file%_test.vim}.vim" "$tmpdir/cov-profile.txt" | awk '{print $4}')
+		printf "  coverage: $cov% of statements" >>"$tmpdir/test.tmp"
+	fi
+
+	echo >>"$tmpdir/test.tmp"
+	cat "$tmpdir/test.tmp" | tee "$tmpdir/test.log"
+	rm "$tmpdir/test.tmp"
+done
+
+# Loop never ran.
+if [ "$did_link" -eq 0 ]; then
+	echo "no *_test.vim files in $testtarget"
+	exit 3
+fi
+
+if [ -n "$profile" ]; then
+	covimerage xml --omit '*_test.vim' --data-file "$tmpdir/cov-profile.data"
+	mv coverage.xml "$profile"
+fi
+
+exit 0
