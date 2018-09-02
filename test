@@ -113,6 +113,7 @@ fi
 mkdir -p "$tmpdir/pack/t/start"
 
 did_link=0
+# shellcheck disable=SC2086
 files=$(find "$find_path" $find_args)
 IFS="
 "
@@ -169,7 +170,7 @@ for test_file in $files; do
 	fi
 
 	echo >>"$tmpdir/test.tmp"
-	cat "$tmpdir/test.tmp" | tee "$tmpdir/test.log"
+	tee "$tmpdir/test.log" <"$tmpdir/test.tmp"
 	rm "$tmpdir/test.tmp"
 done
 
