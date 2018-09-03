@@ -37,6 +37,12 @@ testing.vim will always use the `vim` from `PATH` to run tests; prepend a
 different PATH to run a different `vim`. For testing in CI environments (Travis,
 CircleCI, etc.) I recommend [vim-testbed][testbed].
 
+### Syntax highlighting benchmarks
+
+There is also a small script to benchmark syntax highlighting:
+
+	./bench-syntax file.go:666
+
 [testbed]: https://github.com/tweekmonster/vim-testbed
 [cov]: https://github.com/Vimjas/covimerage
 [1476]: https://github.com/fatih/vim-go/pull/1476

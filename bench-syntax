@@ -1,0 +1,30 @@
+#!/bin/sh
+
+set -euC
+testingdir=$(cd -P "$(dirname "$0")" >/dev/null && pwd)
+
+if [ -z "${1:-}" ]; then
+	echo "file not set"
+	echo "First argument must be a file to benchmark as 'filename:linenr'"
+	exit 1
+fi
+
+file="$(echo "$1" | cut -d : -f 1)"
+line="$(echo "$1" | cut -d : -f 2)"
+if [ -z "$line" ] || [ "$line" = "$file" ]; then
+	echo "Second argument must be a Go file to benchmark, as 'filename:linenr'"
+	exit 1
+fi
+
+RUNBENCH_OUT="$(mktemp -p "${TMPDIR:-/tmp}" testing.vim.XXXXX)"
+export RUNBENCH_OUT
+trap 'rm "$RUNBENCH_OUT"' EXIT
+vim \
+	+"silent e $file" \
+	+"normal! ${line}G" \
+	-S "$testingdir/runbench.vim"
+
+clear
+echo
+echo "$1"
+cat "$RUNBENCH_OUT"
