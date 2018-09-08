@@ -8,7 +8,7 @@ mkdir -p "$tmpdir"
 trap 'rm -r "$tmpdir"' EXIT
 
 _usage() {
-	echo "Usage: ${0##*/} [-hvc] [-r pattern] [-p path] target"
+	echo "Usage: ${0##*/} [-hvc] [-r pattern] [-b path] [-p path] target"
 	echo
 	echo "Options:"
 	echo "  -h       Show this help."
@@ -18,6 +18,10 @@ _usage() {
 	echo "  -r patt  Run only the test functions matching this pattern."
 	echo "           Patterns are matched against the entire function name"
 	echo "           (including Test_) with the =~# operator."
+	echo
+	echo "  -b patt  Run benchmarks functions matching this patterns."
+	echo "           Patterns are matched against the entire function name"
+	echo "           (including Benchmark_) with the =~# operator."
 	echo
 	echo "  -c       Report code coverage."
 	echo "           This depends on covimerage being in PATH:"
@@ -38,7 +42,8 @@ verbose=0
 coverage=0
 profile=""
 run=""
-while getopts "hvcr:p:" option; do
+bench=""
+while getopts "hvcr:p:b:" option; do
 	case "$option" in
 		h)
 			_usage
@@ -46,6 +51,7 @@ while getopts "hvcr:p:" option; do
 			;;
 		v) verbose=1 ;;
 		r) run=$OPTARG ;;
+		b) bench=$OPTARG ;;
 		c) coverage=1 ;;
 		p)
 			coverage=1
@@ -90,7 +96,6 @@ testtarget="$1"
 [ -f "$tmpdir/cov-report.txt" ]  && rm "$tmpdir/cov-report.txt"
 
 # Find files to test.
-
 if echo "$testtarget" | grep -q '/\.\.\.$'; then
 	find_path="${testtarget%...}"
 	find_args="-name *_test.vim"
@@ -155,6 +160,7 @@ for test_file in $files; do
 		+"let g:test_verbose=$verbose" \
 		+"let g:test_tmpdir='$tmpdir'" \
 		+"let g:test_run='$run'" \
+		+"let g:test_bench='$bench'" \
 		-S "$testingdir/runtest.vim" </dev/null || (
 		# If Vim exits with non-0 it's almost certainly a bug in the test runner;
 		# should never happen in normal usage.

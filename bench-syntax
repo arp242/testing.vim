@@ -16,13 +16,16 @@ if [ -z "$line" ] || [ "$line" = "$file" ]; then
 	exit 1
 fi
 
+run_count=${2:-"100"}
+
 RUNBENCH_OUT="$(mktemp -p "${TMPDIR:-/tmp}" testing.vim.XXXXX)"
 export RUNBENCH_OUT
 trap 'rm "$RUNBENCH_OUT"' EXIT
 vim \
 	+"silent e $file" \
 	+"normal! ${line}G" \
-	-S "$testingdir/runbench.vim"
+	+"let g:run_count=$run_count" \
+	-S "$testingdir/syntaxbench.vim"
 
 clear
 echo
