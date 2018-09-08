@@ -10,6 +10,17 @@ some other testing Vim runners/frameworks.
 testing.vim includes support for running benchmarks, benchmarking syntax
 highlighting files, and code coverage reports (via [covimerage][cov]).
 
+Example
+-------
+
+	fun! Test_example() abort
+		if 2 isnot 2
+			call Error('two is not two')
+		endif
+
+		" TODO: expand
+	endfun
+
 Usage
 -----
 
@@ -20,21 +31,19 @@ It is customary – but not mandatory – to store `n_test.vim` files next to th
 
 testing.vim exposes several variables:
 
-- `g:test_verbose` – `-v` flag from commandline (`0` or `1`).
-- `g:test_dir    ` – Directory of the test file that's being run.
-- `g:test_tmpdir ` – Empty temporary directory for writing; this is the default cwd.
-- `g:test_run    ` – `-r` flag from commandline.
-- `g:test_bench  ` – `-b` flag from commandline.
+	g:test_verbose    -v flag from commandline (0 or 1).
+	g:test_dir        Directory of the test file that's being run.
+	g:test_tmpdir     Empty temp directory for writing; this is the default cwd.
+	g:test_run        -r flag from commandline.
+	g:test_bench      -b flag from commandline.
 
 And a few functions:
 
-- `Error(msg)      ` – Add a message to `v:errors`.
-- `Errorf(msg, ...)` – Like `Error()`, but with `printf()` support.
-- `Log(msg)        ` – Add a "log message" in `v:errors`; this won't fail the
-                       test. This is useful as `echom` and `v:errors` output
-					   isn't interleaved.
-- `Logf(msg, ...)  ` – Like Log, with with `print()` support,.
-
+	Error(msg)        Add a message to v:errors.
+	Errorf(msg, ...)  Like Error(), but with printf() support.
+	Log(msg)          Add a "log message" in v:errors; this won't fail the test.
+	                  Useful since :echom and v:errors output isn't interleaved.
+	Logf(msg, ...)    Like Log, with with print() support,.
 
 Run `./test /path/to/file_test.vim` to run test in that file, `./test
 /path/to/dir` to run all test files in a directory, or `./test/path/to/dir/...`
@@ -88,7 +97,8 @@ Some tips for improving performance:
   But the second version is a lot faster due to the `^\s*`; The regular
   expression can stop matching much faster for most lines.
 
-### Credits
+Credits
+-------
 
 I originally implemented this for vim-go, based on Fatih's previous work (see
 [1157][1157], [1158][1158], and [1476][1476]), which was presumably inspired by
