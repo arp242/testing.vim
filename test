@@ -13,7 +13,7 @@ _usage() {
 	echo "Options:"
 	echo "  -h       Show this help."
 	echo
-	echo "  -v       Enable verbose output; exposed as g:test_verbose."
+	echo "  -v       Enable verbose output."
 	echo
 	echo "  -r patt  Run only the test functions matching this pattern."
 	echo "           Patterns are matched against the entire function name"
@@ -61,10 +61,10 @@ done
 shift $((OPTIND - 1))
 
 if [ "$coverage" -eq 1 ] && ! command -v covimerage >/dev/null; then
-	 echo "covimerage tool not found; install it with:"
-	 echo "  pip install covimerage"
-	 echo "also see https://github.com/Vimjas/covimerage"
-	 exit 1
+	echo  "covimerage tool not found; install it with:"
+	echo  "  pip install covimerage"
+	echo  "also see https://github.com/Vimjas/covimerage"
+	exit  1
 fi
 
 # Get path
@@ -74,9 +74,9 @@ if [ -z "${1:-}" ]; then
 fi
 
 # TODO: allow multiple paths.
-if [ -n "${2:-}" ]; then
-	echo "Only a single file or directory is supported at the moment. Sorry :-("
-	exit 1
+if  [ -n "${2:-}" ]; then
+	echo  "Only a single file or directory is supported at the moment. Sorry :-("
+	exit  1
 fi
 
 testtarget="$1"
@@ -113,8 +113,10 @@ fi
 mkdir -p "$tmpdir/pack/t/start"
 
 did_link=0
+set -f
 # shellcheck disable=SC2086
 files=$(find "$find_path" $find_args)
+set +f
 IFS="
 "
 
@@ -157,10 +159,17 @@ for test_file in $files; do
 		# If Vim exits with non-0 it's almost certainly a bug in the test runner;
 		# should never happen in normal usage.
 		# TODO: not all messages are always shown; i.e. if the error is "too
-		# fatal" to be written to test.tmp.
-		 echo 'TEST RUNNER FAILURE; error in runtest.vim'
-		 [ -f "$tmpdir/test.tmp" ] && cat "$tmpdir/test.tmp"
-		 exit 5
+		# fatal" to be written to test.tmp.)
+		#
+		# With -V they show as e.g.:
+		# Error detected while processing /data/code/vim/testing.vim/runtest.vim:
+		# line   94:
+		# E461: Illegal variable name: l:failedTEST RUNNER FAILURE; error in runtest.vim
+		#
+		# So try grepping that, maybe?
+		echo  'TEST RUNNER FAILURE; error in runtest.vim'
+		[  -f "$tmpdir/test.tmp" ] && cat "$tmpdir/test.tmp"
+		exit  5
 	)
 
 	# Append logs

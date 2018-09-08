@@ -17,12 +17,30 @@ testing.vim includes support for code coverage reports (via [covimerage][cov]).
 Usage
 -----
 
-Tests are stored in a `*_test.vim` files, all functions starting with `Test_`
-will be run.
+Tests are stored in a `*_test.vim` files, all functions matching the
+`Test_\k+() abort` signature will be run.
 It is customary – but not mandatory – to store `n_test.vim` files next to the
 `n.vim` file in the same directory.
 
-Run `./test /path/to/file_vim.go` to run test in that file, `./test
+testing.vim exposes several variables:
+
+- `g:test_verbose`  – `-v` flag from commandline (`0` or `1`).
+- `g:test_run`      – `-r` flag from commandline.
+- `g:test_dir`      – Directory of the test file that's being run.
+- `g:test_tmpdir`   – Temporary directory; will be empty and `:cd`'d to for
+                      every test.
+
+And a few functions:
+
+- `Error(msg)`       – Add a message to `v:errors`.
+- `Errorf(msg, ...)` – Like `Error()`, but with `printf()` support.
+- `Log(msg)`         – Add a "log message" in `v:errors`; this won't fail the
+                       test. This is useful as `echom` and `v:errors` output
+					   isn't interleaved.
+- `Logf(msg, ...)`   – Like Log, with with `print()` support,.
+
+
+Run `./test /path/to/file_test.vim` to run test in that file, `./test
 /path/to/dir` to run all test files in a directory, or `./test/path/to/dir/...`
 to run al test files in a directory and all subdirectories.
 
