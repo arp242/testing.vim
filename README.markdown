@@ -58,8 +58,9 @@ You can filter test functions with the `-r` option. See `./test -h` for various
 other options.
 
 testing.vim will always use the `vim` from `PATH` to run tests; prepend a
-different PATH to run a different `vim`. For testing in CI environments (Travis,
-CircleCI, etc.) I recommend [vim-testbed][testbed].
+different PATH to run a different `vim`.
+
+See [gopher.vim for an example Travis integration](https://github.com/Carpetsmoker/gopher.vim/blob/master/.travis.yml).
 
 ### Syntax highlighting benchmarks
 
