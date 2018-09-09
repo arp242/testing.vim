@@ -20,7 +20,10 @@ let g:test_verbose = get(g:, 'test_verbose', 0)
 let s:tmp          = g:test_tmpdir
 let g:test_tmpdir  = s:tmp . '/tmp'
 
-call mkdir(g:test_tmpdir, 'p')
+if !isdirectory(g:test_tmpdir)
+	" Since Vim 8.0.1708 this won't error out.
+	call mkdir(g:test_tmpdir, 'p')
+endif
 
 " Helper functions available in tests.
 let s:log_marker = '__TEST_LOG__'
