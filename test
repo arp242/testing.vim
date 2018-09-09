@@ -8,12 +8,14 @@ mkdir -p "$tmpdir"
 trap 'rm -r "$tmpdir"' EXIT
 
 _usage() {
-	echo "Usage: ${0##*/} [-hvc] [-r pattern] [-b path] [-p path] target"
+	echo "Usage: ${0##*/} [-hvVc] [-r pattern] [-b path] [-p path] target"
 	echo
 	echo "Options:"
 	echo "  -h       Show this help."
 	echo
 	echo "  -v       Enable verbose output."
+	echo
+	echo "  -V       Run vim with -V20 (very verbose)."
 	echo
 	echo "  -r patt  Run only the test functions matching this pattern."
 	echo "           Patterns are matched against the entire function name"
@@ -39,17 +41,19 @@ _usage() {
 }
 
 verbose=0
+vim_verbose=""
 coverage=0
 profile=""
 run=""
 bench=""
-while getopts "hvcr:p:b:" option; do
+while getopts "hvVcr:p:b:" option; do
 	case "$option" in
 		h)
 			_usage
 			exit 0
 			;;
 		v) verbose=1 ;;
+		V) vim_verbose="-V20" ;;
 		r) run=$OPTARG ;;
 		b) bench=$OPTARG ;;
 		c) coverage=1 ;;
@@ -152,7 +156,7 @@ for test_file in $files; do
 		done
 	fi
 
-	$vim_cmd --noplugin -u NONE -N -e \
+	$vim_cmd --noplugin -u NONE -N $vim_verbose -e \
 		+"set shm+=WAFI rtp^=$testingdir packpath=$tmpdir" \
 		+'filetype plugin indent on' \
 		+'packloadall!' \
