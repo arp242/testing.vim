@@ -12,7 +12,7 @@ fi
 file="$(echo "$1" | cut -d : -f 1)"
 line="$(echo "$1" | cut -d : -f 2)"
 if [ -z "$line" ] || [ "$line" = "$file" ]; then
-	echo "Second argument must be a Go file to benchmark, as 'filename:linenr'"
+	echo "First argument must be a file to benchmark as 'filename:linenr'"
 	exit 1
 fi
 
