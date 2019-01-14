@@ -13,13 +13,34 @@ highlighting files, and code coverage reports (via [covimerage][cov]).
 Example
 -------
 
-	fun! Test_example() abort
-		if 2 isnot 2
-			call Error('two is not two')
-		endif
+Annotated example test function
+([original](https://github.com/Carpetsmoker/gopher.vim/blob/acb9e38/autoload/gopher/internal_test.vim#L25-L39)):
 
-		" TODO: expand
-	endfun
+```vim
+fun! Test_cursor_offset() abort
+	" Create a new bufer, and add three lines to it. Make sure the cursor is on
+	" the third line.
+	new
+	call append(0, ['€', 'aaa', 'bbb'])
+	call cursor(3, 0)
+
+	" Call the function we want to test and ensure we have the correct output.
+	let l:out = gopher#internal#cursor_offset()
+	call assert_equal(8, l:out)
+
+	" Again with a different parameter.
+	let l:out = gopher#internal#cursor_offset(1)
+	call assert_equal(':#8', l:out)
+
+	" Write the buffer; it's chdir()'ed to a tmp dir, so it's fine to just write
+	" stuff.
+	silent w off
+
+	" Ensure filename is added.
+	let l:out = gopher#internal#cursor_offset(1)
+	call assert_equal(g:test_tmpdir . '/off:#8', l:out)
+endfun
+```
 
 Usage
 -----
@@ -32,10 +53,11 @@ It is customary – but not mandatory – to store `n_test.vim` files next to th
 testing.vim exposes several variables:
 
 	g:test_verbose    -v flag from commandline (0 or 1).
+	g:test_run        -r flag from commandline, as a string.
+	g:test_bench      -b flag from commandline, as a string.
 	g:test_dir        Directory of the test file that's being run.
-	g:test_tmpdir     Empty temp directory for writing; this is the default cwd.
-	g:test_run        -r flag from commandline.
-	g:test_bench      -b flag from commandline.
+	g:test_tmpdir     Empty temp directory for writing; this is also set as the
+	                  working directory before running tests.
 
 And a few functions:
 
@@ -51,11 +73,12 @@ to run al test files in a directory and all subdirectories.
 
 A test is considered to be "failed" when `v:errors` has any items that are not
 marked as informational (as done by `Log()`).
-Vim's `assert_*` functions write to `v:errors`, and it can also be written to as
-a regular list for adding custom testing logic.
 
-You can filter test functions with the `-r` option. See `./test -h` for various
-other options.
+Vim's `assert_*` functions write to `v:errors`, and it can be written to as any
+list. You don't need to use `Error()`.
+
+You can filter test functions to run with the `-r` option. See `./test -h` for
+various other options.
 
 testing.vim will always use the `vim` from `PATH` to run tests; prepend a
 different PATH to run a different `vim`.
