@@ -20,8 +20,9 @@ let g:test_verbose = get(g:, 'test_verbose', 0)
 let s:tmp          = g:test_tmpdir
 let g:test_tmpdir  = s:tmp . '/tmp'
 
+" Note: this won't error out if the dir exists since Vim 8.0.1708; can remove
+" this check at some point.
 if !isdirectory(g:test_tmpdir)
-	" Since Vim 8.0.1708 this won't error out.
 	call mkdir(g:test_tmpdir, 'p')
 endif
 
@@ -54,82 +55,89 @@ let s:testfile = substitute(expand('%'), '^\./\?', '', '')
 let g:test_dir = expand('%:p:h') 
 execute 'cd ' . fnameescape(g:test_tmpdir)
 
+" Store all log messages.
+let s:logs = []
+
+" Add all :messages to s:logs.
+fun! s:log_messages(f) abort
+	let l:mess = split(execute('silent messages'), "\n")
+	let l:mess = filter(l:mess, { i, v -> l:v !~? '^Messages maintainer' })
+	let l:mess = map(l:mess, { i, v -> '        ' . a:f . ': ' . l:v })
+	let s:logs += l:mess
+	silent messages clear
+endfun
+
+" Get a list of all Test_ or Benchmark_ functions.
+fun! s:find_fun(pat) abort
+	let l:tests = execute('silent function /' . a:pat)
+	let l:tests = split(l:tests, "\n")
+	let l:tests = filter(l:tests, { i, v -> l:v =~# '^function \k\{-1,}() abort$' })
+	let l:tests = map(l:tests, { i, v -> substitute(l:v, 'function \(\k\{-1,}\)() abort', '\1', 'g') })
+	return l:tests
+endfun
+
 fun! s:run_tests() abort
 	" Initialize variables.
-	let s:fail = 0
-	let s:done = 0
-	let s:logs = []
+	let l:fail = 0
+	let l:done = 0
 
-	" Add all messages (usually errors).
-	fun! s:logmessages(f) abort
-		let l:mess = split(execute('silent messages'), "\n")
-		let l:mess = filter(l:mess, { i, v -> l:v !~? '^Messages maintainer' })
-		let l:mess = map(l:mess, { i, v -> '        ' . a:f . ': ' . l:v })
-		let s:logs += l:mess
-		silent messages clear
-	endfun
-
-	" Get a list of all Test_ functions for the given file.
-	let s:tests = execute('silent function /^Test_')
-	let s:tests = split(s:tests, "\n")
-	let s:tests = filter(s:tests, { i, v -> l:v =~# '^function \k\{-1,}() abort$' })
-	let s:tests = map(s:tests, { i, v -> substitute(l:v, 'function \(\k\{-1,}\)() abort', '\1', 'g') })
+	let l:tests = s:find_fun('^Test_')
 	if g:test_run isnot# ''
-		let s:tests = filter(s:tests, { i, v -> l:v =~# g:test_run })
+		let l:tests = filter(l:tests, { i, v -> l:v =~# g:test_run })
 	endif
 
 	" Log any messages that we may already accumulated.
 	if g:test_verbose
-		call s:logmessages('')
+		call s:log_messages('')
 	endif
 
 	" Iterate over all tests and execute them.
-	for s:test in sort(s:tests)
-		let s:started = reltime()
+	for l:test in sort(l:tests)
+		let l:started = reltime()
 		if g:test_verbose
-			call add(s:logs, printf('=== RUN  %s', s:test))
+			call add(s:logs, printf('=== RUN  %s', l:test))
 		endif
 
 		try
-			call call(s:test, [])
+			call call(l:test, [])
 		catch
 			let v:errors += [v:exception]
 		endtry
 
-		let s:elapsed_time = s:since(s:started)
-		let s:done += 1
+		let l:elapsed_time = s:since(l:started)
+		let l:done += 1
 
 		if len(v:errors) > 0
-			let s:errors = v:errors
-			let s:failed = 0
+			let l:errors = v:errors
+			let l:failed = 0
 
-			for s:i in range(len(s:errors))
-				let s:err = s:errors[s:i]
+			for l:i in range(len(l:errors))
+				let l:err = l:errors[l:i]
 
 				" Log message; add to output but don't fail test.
-				if type(s:err) is v:t_list && s:err[0] is# s:log_marker
-					let s:errors[s:i] = s:err[1]
+				if type(l:err) is v:t_list && l:err[0] is# s:log_marker
+					let l:errors[l:i] = l:err[1]
 				else
-					let s:failed = 1
+					let l:failed = 1
 					" --- FAIL Test_Comment (0.000s)
-					call add(s:logs, printf('--- FAIL %s (%ss)', s:test, s:elapsed_time))
+					call add(s:logs, printf('--- FAIL %s (%ss)', l:test, l:elapsed_time))
 				endif
 			endfor
 
-			if s:failed
-				let s:fail += 1
+			if l:failed
+				let l:fail += 1
 			endif
 
 			" Add :messages.
-			" Note that order between log messages and asserts aren't preserved; no
-			" real good way to do that. Writing to v:errors is probably better.
-			call s:logmessages(s:test)
+			" Note that order between log messages and asserts aren't preserved;
+			" no real good way to do that. Writing to v:errors is better.
+			call s:log_messages(l:test)
 
 			" Remove function name from start of errors and indent.
-			call extend(s:logs, map(s:errors, {
-						\ i, v -> '        ' . substitute(l:v, '^function ' . s:test . ' ', '', '')
+			call extend(s:logs, map(l:errors, {
+						\ i, v -> '        ' . substitute(l:v, '^function ' . l:test . ' ', '', '')
 						\ }))
-			if s:failed
+			if l:failed
 				call add(s:logs, 'FAIL')
 			endif
 
@@ -137,34 +145,46 @@ fun! s:run_tests() abort
 			let v:errors = []
 		else
 			if g:test_verbose
-				call add(s:logs, printf('--- PASS %s (%ss)', s:test, s:elapsed_time))
+				call add(s:logs, printf('--- PASS %s (%ss)', l:test, l:elapsed_time))
 			endif
 		endif
 
 		if g:test_verbose
-			call s:logmessages(s:test)
+			call s:log_messages(l:test)
 		endif
 	endfor
 
 	" Create an empty fail to indicate that at least one test failed.
-	if s:fail > 0
+	if l:fail > 0
 		exe printf('split %s/FAILED', fnameescape(s:tmp))
 		silent write
 	endif
 
-	let s:total_elapsed_time = s:since(s:total_started)
+	call s:log_messages(l:test)
 
-	" Store all internal messages from s:logs as well.
-	silent! exe printf('split %s/test.tmp', fnameescape(s:tmp))
-	call setline(1, s:logs)
-	call append(line('$'), printf('%s %s %s  %s tests  %ss',
-			\ (s:fail > 0 ? 'FAIL' : 'ok  '),
+	let l:total_elapsed_time = s:since(s:total_started)
+	call add(s:logs, printf('%s %s %s  %s tests  %ss',
+			\ (l:fail > 0 ? 'FAIL' : 'ok  '),
 			\ s:testfile,
 			\ repeat(' ', 25 - len(s:testfile)),
-			\ s:done, s:total_elapsed_time))
-	if len(s:tests) is 0
-		call setline(line('$'), getline('$') . ' [no tests to run]')
+			\ l:done, l:total_elapsed_time))
+	if len(l:tests) is 0
+		let s:logs[len(s:logs) - 1] .= ' [no tests to run]'
 	endif
+
+	" Don't need to write logs if we're going to run benchmarks.
+	if g:test_bench isnot# '' && l:fail is 0 && !g:test_verbose
+		let s:logs = []
+	endif
+
+	call s:write_logs()
+
+	return l:fail is 0
+endfun
+
+fun! s:write_logs() abort
+	silent! exe printf('split %s/test.tmp', fnameescape(s:tmp))
+	call setline(1, s:logs)
 	if !g:test_verbose
 		silent :g/^$/d
 	endif
@@ -172,27 +192,32 @@ fun! s:run_tests() abort
 	" Don't write with newline, so we can add coverage data in the shell script.
 	setlocal noendofline nofixeol
 	silent! write
-
-	return s:fail is 0
 endfun
 
 fun! s:run_benchmarks() abort
-	let s:tests = execute('silent function /^Benchmark_')
-	let s:tests = split(s:tests, "\n")
-	let s:tests = filter(s:tests, { i, v -> l:v =~# '^function \k\{-1,}() abort$' })
-	let s:tests = map(s:tests, { i, v -> substitute(l:v, 'function \(\k\{-1,}\)() abort', '\1', 'g') })
+	let l:tests = s:find_fun('^Benchmark_')
 	if g:test_run isnot# ''
-		let s:tests = filter(s:tests, { i, v -> l:v =~# g:test_bench })
+		let l:tests = filter(l:tests, { i, v -> l:v =~# g:test_bench })
 	endif
 
-	let s:started = reltime()
+	let g:bench_n = 100000
+	for l:test in l:tests
+		let l:started = reltime()
+		try
+			call call(l:test, [])
+		catch
+			let v:errors += [v:exception]
+		endtry
 
-	" TODO: actually implement this.
-	for s:test in s:tests
-		echom 'BENCH ' . s:test
+		let l:elapsed_time = s:since(l:started)
+
+		call s:log_messages(l:test)
+		call add(s:logs, printf('%s%s %ss',
+					\ l:test, repeat(' ', 32 - len(l:test)),
+					\ l:elapsed_time))
 	endfor
 
-	let s:elapsed_time = s:since(s:started)
+	call s:write_logs()
 endfun
 
 " Run all tests in this file.

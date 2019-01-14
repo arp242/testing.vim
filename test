@@ -17,27 +17,21 @@ _usage() {
 	echo
 	echo "  -V       Run vim with -V20 (very verbose)."
 	echo
-	echo "  -r patt  Run only the test functions matching this pattern."
-	echo "           Patterns are matched against the entire function name"
-	echo "           (including Test_) with the =~# operator."
+	echo "  -r patt  Run only the test functions matching the pattern. Patterns are"
+	echo "           matched against the full function name (including Test_) with =~#"
 	echo
-	echo "  -b patt  Run benchmarks functions matching this patterns."
-	echo "           Patterns are matched against the entire function name"
-	echo "           (including Benchmark_) with the =~# operator."
+	echo "  -b patt  Run benchmarks functions matching this patterns. Patterns are"
+	echo "           matched against the full function name (including Benchmark_) with =~#"
 	echo
-	echo "  -c       Report code coverage."
-	echo "           This depends on covimerage being in PATH:"
+	echo "  -c       Report code coverage. This depends on covimerage being in PATH:"
 	echo "           https://github.com/Vimjas/covimerage"
 	echo
-	echo "  -p path  Write code coverage profile to path."
-	echo "           The coverage report is an XML file compatible with Coverage.py"
+	echo "  -p path  Write code coverage profile to path. This is a Coverage.py XML file:"
 	echo "           https://github.com/nedbat/coveragepy"
 	echo
-	echo "  target   File or directory to test."
-	echo "           If it is a directory all *_test.vim files in that directory"
-	echo "           will be run."
-	echo "           Test files in subdirectories will also be run if the pattern"
-	echo "           ends with '/...'"
+	echo "  target   File or directory to test. If it is a directory all *_test.vim files"
+	echo "           in that directory will be run. Test files in subdirectories will also"
+	echo "           be run if the pattern ends with '/...'"
 }
 
 verbose=0
