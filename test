@@ -3,9 +3,7 @@
 set -euC
 testingdir=$(cd -P "$(dirname "$0")" >/dev/null && pwd)
 
-tmpdir=$(mktemp -d -p "${TMPDIR:-/tmp}" testing.vim.XXXXXXX)
-mkdir -p "$tmpdir"
-trap 'rm -r "$tmpdir"' EXIT
+. "$testingdir/shared"
 
 _usage() {
 	echo "Usage: ${0##*/} [-hvVc] [-r pattern] [-b path] [-p path] target"
@@ -93,18 +91,6 @@ testtarget="$1"
 [ -f "$tmpdir/cov-profile.txt" ] && rm "$tmpdir/cov-profile.txt"
 [ -f "$tmpdir/cov-report.txt" ]  && rm "$tmpdir/cov-report.txt"
 
-# Find files to test.
-if echo "$testtarget" | grep -q '/\.\.\.$'; then
-	find_path="${testtarget%...}"
-	find_args="-name *_test.vim"
-elif [ -e "$testtarget" ]; then
-	find_path="${testtarget}"
-	find_args="-maxdepth 1 -name *_test.vim"
-else
-	echo "no such file or directory: $testtarget"
-	exit 1
-fi
-
 vim_cmd=vim
 
 # Generate code coverage report.
@@ -112,43 +98,14 @@ if [ "$coverage" -eq 1 ]; then
 	vim_cmd="covimerage -q run --data-file $tmpdir/cov-profile.data --report-file $tmpdir/cov-profile.txt --append $vim_cmd"
 fi
 
-# Set up package.
-mkdir -p "$tmpdir/pack/t/start"
-
-did_link=0
-set -f
-# shellcheck disable=SC2086
-files=$(find "$find_path" $find_args)
-set +f
-IFS="
-"
-
 # Run the actual tests.
-for test_file in $files; do
+test_files=$(find_files "$testtarget" '*_test.vim')
+packdir="$tmpdir/pack/t/start/$(ls "$tmpdir/pack/t/start")"
+for test_file in $test_files; do
 	IFS="$(printf ' \n')"
 
 	test_file="${test_file#./}"
 	test_dir=$(dirname "$test_file")
-
-	# Find the plugin's root directory and make sure that the plugin we're
-	# testing is available as a package.
-	if [ "$did_link" -eq 0 ]; then
-		pack="$(cd "$test_dir" && pwd)"
-		while :; do
-			if [ "$pack" = "/" ]; then
-				echo "could not locate the plugin directory for $test_file"
-				exit 2
-			fi
-
-			if [ -d "$pack/autoload" ] || [ -d "$pack/plugin" ] || [ -d "$pack/ftplugin" ]; then
-				ln -s "$pack" "$tmpdir/pack/t/start"
-				did_link=1
-				break
-			fi
-
-			pack="$(dirname "$pack")"
-		done
-	fi
 
 	$vim_cmd --noplugin -u NONE -N $vim_verbose -e \
 		+"set shm+=WAFI rtp^=$testingdir packpath=$tmpdir" \
@@ -156,9 +113,10 @@ for test_file in $files; do
 		+'packloadall!' \
 		+"silent e $test_file" \
 		+"let g:test_verbose=$verbose" \
-		+"let g:test_tmpdir='$tmpdir'" \
+		+"let g:test_tmpdir='$tmpdir' | let g:test_packdir='$packdir'" \
 		+"let g:test_run='$run'" \
 		+"let g:test_bench='$bench'" \
+		-S "$testingdir/syntax.vim" \
 		-S "$testingdir/runtest.vim" </dev/null || (
 		# If Vim exits with non-0 it's almost certainly a bug in the test runner;
 		# should never happen in normal usage.
@@ -172,8 +130,8 @@ for test_file in $files; do
 		#
 		# So try grepping that, maybe?
 		echo  'TEST RUNNER FAILURE; error in runtest.vim'
-		[  -f "$tmpdir/test.tmp" ] && cat "$tmpdir/test.tmp"
-		exit  5
+		[ -f "$tmpdir/test.tmp" ] && cat "$tmpdir/test.tmp"
+		exit 5
 	)
 
 	# Append logs
@@ -186,12 +144,6 @@ for test_file in $files; do
 	tee "$tmpdir/test.log" <"$tmpdir/test.tmp"
 	rm "$tmpdir/test.tmp"
 done
-
-# Loop never ran.
-if [ "$did_link" -eq 0 ]; then
-	echo "no *_test.vim files in $testtarget"
-	exit 3
-fi
 
 if [ -n "$profile" ]; then
 	covimerage xml --omit '*_test.vim' --data-file "$tmpdir/cov-profile.data"

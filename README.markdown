@@ -89,6 +89,33 @@ different PATH to run a different `vim`.
 
 See [gopher.vim for an example Travis integration](https://github.com/Carpetsmoker/gopher.vim/blob/master/.travis.yml).
 
+Syntax highlighting tests
+-------------------------
+
+testing.vim includes support for testing syntax highlighting with the
+`test-syntax` script.
+
+How it works:
+
+- Write a test file for the syntax to test; for example `basic.go` with the
+  contents:
+
+      package main
+
+      import "fmt"
+
+      func main() {
+      	var msg = "Let's go!"
+      	fmt.Println(msg)
+      }
+
+- Verify that the highlighting is correct in this file.
+
+- Run `./test-syntax path/to/basic.go`; this will generate a test script
+  detailing the current syntax highlighting.
+
+- Test the file as any other `_test.vim` script.
+
 Benchmarks
 ----------
 
