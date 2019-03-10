@@ -163,7 +163,7 @@ for test_file in $files; do
 		# If Vim exits with non-0 it's almost certainly a bug in the test runner;
 		# should never happen in normal usage.
 		# TODO: not all messages are always shown; i.e. if the error is "too
-		# fatal" to be written to test.tmp.)
+		# fatal" to be written to test.tmp.
 		#
 		# With -V they show as e.g.:
 		# Error detected while processing /data/code/vim/testing.vim/runtest.vim:

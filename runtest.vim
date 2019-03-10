@@ -152,7 +152,7 @@ fun! s:run_tests() abort
 		if g:test_verbose
 			call s:log_messages(l:test)
 		endif
-	endfor
+	endfor  " for l:test in sort(l:tests)
 
 	" Create an empty fail to indicate that at least one test failed.
 	if l:fail > 0
@@ -160,7 +160,7 @@ fun! s:run_tests() abort
 		silent write
 	endif
 
-	call s:log_messages(l:test)
+	call s:log_messages('')
 
 	let l:total_elapsed_time = s:since(s:total_started)
 	call add(s:logs, printf('%s %s %s  %s tests  %ss',
