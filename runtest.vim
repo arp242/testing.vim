@@ -203,9 +203,7 @@ endfun
 
 fun! s:run_benchmarks() abort
 	let l:tests = s:find_fun('^Benchmark_')
-	if g:test_run isnot# ''
-		let l:tests = filter(l:tests, { i, v -> l:v =~# g:test_bench })
-	endif
+	let l:tests = filter(l:tests, { i, v -> l:v =~# g:test_bench })
 
 	let g:bench_n = 100000
 	for l:test in l:tests
