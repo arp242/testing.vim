@@ -114,19 +114,17 @@ fun! s:run_tests() abort
 			for l:i in range(len(l:errors))
 				let l:err = l:errors[l:i]
 
-				" Log message; add to output but don't fail test.
+				" Log message: add to output but don't fail test.
 				if type(l:err) is v:t_list && l:err[0] is# s:log_marker
 					let l:errors[l:i] = l:err[1]
 				else
 					let l:failed = 1
+					let l:fail += 1
+
 					" --- FAIL Test_Comment (0.000s)
 					call add(s:logs, printf('--- FAIL %s (%ss)', l:test, l:elapsed_time))
 				endif
 			endfor
-
-			if l:failed
-				let l:fail += 1
-			endif
 
 			" Add :messages.
 			" Note that order between log messages and asserts aren't preserved;
@@ -134,9 +132,18 @@ fun! s:run_tests() abort
 			call s:log_messages(l:test)
 
 			" Remove function name from start of errors and indent.
-			call extend(s:logs, map(l:errors, {
-						\ i, v -> '        ' . substitute(l:v, '^function ' . l:test . ' ', '', '')
-						\ }))
+			let l:errors = map(l:errors,
+				\ {i, v -> substitute(l:v, '^function ' . l:test . ' ', '', '')})
+			
+			" Support messages with newlines.
+			let l:experr = []
+			for l:err in l:errors
+				call extend(l:experr, map(split(l:err, "\n"),
+							\ {i, v -> repeat(' ', 10) . l:v}))
+			endfor
+
+			call extend(s:logs, l:experr)
+
 			if l:failed
 				call add(s:logs, 'FAIL')
 			endif
