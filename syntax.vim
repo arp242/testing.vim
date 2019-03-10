@@ -6,11 +6,15 @@ fun! ListAllSyntax()
 		let l:prevgroup = ''
 		let l:linelen = len(getline(l:line))
 		for l:col in range(1, l:linelen)
+			" TODO: Syntax can be stacked; not sure if we want/need to deal with
+			" that though.
 			let l:group = synIDattr(synID(l:line, l:col, 1), 'name')
 
-			if l:prevgroup is# '' && l:group isnot# ''
+			if l:group isnot# l:prevgroup && l:group isnot# ''
 				call add(l:outline, [l:group, l:col, -1])
-			elseif l:group isnot# l:prevgroup || (l:col is l:linelen && l:prevgroup isnot# '')
+			endif
+
+			if l:group isnot# l:prevgroup || (l:col is l:linelen && l:prevgroup isnot# '')
 				let l:outline[len(l:outline) - 1][2] = l:col
 			endif
 
@@ -24,7 +28,6 @@ fun! ListAllSyntax()
 endfun
 
 fun! TestSyntax(file, want) abort
-    syntax on
     exe 'e ' . fnameescape(a:file)
 
     let l:want = a:want

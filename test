@@ -111,14 +111,14 @@ for test_file in $test_files; do
 	test_dir=$(dirname "$test_file")
 
 	$vim_cmd --noplugin -u NONE -N $vim_verbose -e \
-		+"set shm+=WAFI rtp^=$testingdir packpath=$tmpdir" \
+		+"set shm+=WAFI rtp^=$packdir packpath=$tmpdir" \
+		+'syntax on' \
 		+'filetype plugin indent on' \
 		+'packloadall!' \
 		+"silent e $test_file" \
 		+"let g:test_verbose=$verbose" \
 		+"let g:test_tmpdir='$tmpdir' | let g:test_packdir='$packdir'" \
-		+"let g:test_run='$run'" \
-		+"let g:test_bench='$bench'" \
+		+"let g:test_run='$run' | let g:test_bench='$bench'" \
 		-S "$testingdir/syntax.vim" \
 		-S "$testingdir/runtest.vim" </dev/null || (
 		# If Vim exits with non-0 it's almost certainly a bug in the test runner;
