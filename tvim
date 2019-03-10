@@ -1,0 +1,345 @@
+#!/bin/sh
+
+set -euC
+
+prefix=$(cd -P "$(dirname "$0")" >/dev/null && pwd)
+tvim="$prefix/tvim.vim"
+
+# Set up tmpdir
+tmpdir=$(mktemp -d -p "${TMPDIR:-/tmp}" testing.vim.XXXXXXX)
+mkdir -p "$tmpdir"
+trap 'rm -r "$tmpdir"' EXIT
+
+_usage_commands() {
+	echo "Usage: ${0##*/} command [flags]"
+	echo
+	echo "Commands:"
+	echo "  test        Run tests."
+	echo "  bench-syn   Bench syntax highlighting."
+	echo "  gen-syn     Generate a syntax highlighting test."
+	echo "  help        Display more help about a command."
+	echo
+	echo "Environment:"
+	echo "  TEST_VIM   Binary to use; defaults to 'vim'."
+}
+
+_usage_bench_syn() {
+	echo "Usage: ${0##*/} bench-syn"
+}
+
+_usage_gen_syn() {
+	echo "Usage: ${0##*/} gen-syn"
+}
+
+_usage_test() {
+	echo "Usage: ${0##*/} test [-hvVc] [-r pattern] [-b path] [-p path] target"
+	echo
+	echo "Options:"
+	echo "  -h         Show this help."
+	echo
+	echo "  -v         Enable verbose output."
+	echo
+	echo "  -V         Run vim with -V20 (very verbose)."
+	echo
+	echo "  -r patt    Run only the test functions matching the pattern. Patterns are"
+	echo "             matched against the function name (including Test_) with =~#"
+	echo
+	echo "  -b patt    Run benchmarks functions matching this patterns. Patterns are"
+	echo "             matched against the function name (including Benchmark_) with =~#"
+	echo
+	echo "  -c         Report code coverage. This requires covimerage in PATH:"
+	echo "             https://github.com/Vimjas/covimerage"
+	echo
+	echo "  -p path    Write code coverage profile to path. This is a Coverage.py file:"
+	echo "             https://github.com/nedbat/coveragepy"
+	echo
+	echo "  target     File or directory to test. If it is a directory all *_test.vim"
+	echo "             files in that directory will be run. Test files in subdirectories"
+	echo "             will also be run if the pattern ends with '/...'"
+}
+
+_run_test() {
+	verbose=0
+	vim_verbose=""
+	coverage=0
+	profile=""
+	run=""
+	bench=""
+	while getopts "hvVcr:p:b:" option; do
+		case "$option" in
+			h)
+				_usage
+				exit 0
+				;;
+			v) verbose=1 ;;
+			V) vim_verbose="-V20" ;;
+			r) run=$OPTARG ;;
+			b) bench=$OPTARG ;;
+			c) coverage=1 ;;
+			p)
+				coverage=1
+				profile=$OPTARG
+				;;
+			*)
+				echo "error: unknown option '$option'"
+				_usage
+				exit 1
+				;;
+		esac
+	done
+	shift $((OPTIND - 1))
+
+	if [ "$coverage" -eq 1 ] && ! command -v covimerage >/dev/null; then
+		echo  "covimerage tool not found; install it with:"
+		echo  "  pip install covimerage"
+		echo  "also see https://github.com/Vimjas/covimerage"
+		exit  1
+	fi
+
+	# Get path
+	if [ -z "${1:-}" ]; then
+		echo "need a file or directory to test"
+		exit 1
+	fi
+
+	# TODO: allow multiple paths.
+	if  [ -n "${2:-}" ]; then
+		echo  "Only a single file or directory is supported at the moment. Sorry :-("
+		exit  1
+	fi
+
+	testtarget="$1"
+
+	### Run tests.
+	##############
+	# Clean stale log file.
+	[ -f "$tmpdir/test.log" ]        && rm "$tmpdir/test.log"
+	[ -f "$tmpdir/FAILED" ]          && rm "$tmpdir/FAILED"
+	[ -f "$tmpdir/cov-profile.txt" ] && rm "$tmpdir/cov-profile.txt"
+	[ -f "$tmpdir/cov-report.txt" ]  && rm "$tmpdir/cov-report.txt"
+
+	vim_cmd=${TEST_VIM:-vim}
+
+	# Generate code coverage report.
+	if [ "$coverage" -eq 1 ]; then
+		vim_cmd="covimerage -q run --data-file $tmpdir/cov-profile.data --report-file $tmpdir/cov-profile.txt --append $vim_cmd"
+	fi
+
+	# Run the actual tests.
+	test_files=$(find_files "$testtarget" '*_test.vim')
+	packdir="$tmpdir/pack/t/start/$(ls "$tmpdir/pack/t/start")"
+	for test_file in $test_files; do
+		IFS="$(printf ' \n')"
+
+		test_file="${test_file#./}"
+		test_dir=$(dirname "$test_file")
+
+		$vim_cmd --noplugin -u NONE -N $vim_verbose -e \
+			+"set shm+=WAFI rtp^=$packdir packpath=$tmpdir" \
+			+'packloadall!' \
+			+"silent e $test_file" \
+			+"let g:test_verbose=$verbose" \
+			+"let g:test_tmpdir='$tmpdir' | let g:test_packdir='$packdir'" \
+			+"let g:test_run='$run' | let g:test_bench='$bench'" \
+			-S "$tvim" \
+			+':call Tvim_Test()' </dev/null || (
+			# If Vim exits with non-0 it's almost certainly a bug in the test runner;
+			# should never happen in normal usage.
+			# TODO: not all messages are always shown; i.e. if the error is "too
+			# fatal" to be written to test.tmp.
+			#
+			# With -V they show as e.g.:
+			# Error detected while processing /data/code/vim/testing.vim/runtest.vim:
+			# line   94:
+			# E461: Illegal variable name: l:failedTEST RUNNER FAILURE; error in runtest.vim
+			#
+			# So try grepping that, maybe?
+			echo  'TEST RUNNER FAILURE; error in runtest.vim'
+			[ -f "$tmpdir/test.tmp" ] && cat "$tmpdir/test.tmp"
+			exit 5
+		)
+
+		# Append logs
+		if [ "$coverage" -eq 1 ]; then
+			cov=$(grep "${test_file%_test.vim}.vim" "$tmpdir/cov-profile.txt" | awk '{print $4}')
+			printf "  coverage: $cov% of statements" >>"$tmpdir/test.tmp"
+		fi
+
+		echo >>"$tmpdir/test.tmp"
+		tee "$tmpdir/test.log" <"$tmpdir/test.tmp"
+		rm "$tmpdir/test.tmp"
+	done
+
+	if [ -n "$profile" ]; then
+		covimerage xml --omit '*_test.vim' --data-file "$tmpdir/cov-profile.data"
+		mv coverage.xml "$profile"
+	fi
+
+	exit 0
+}
+
+_run_bench_syn() {
+	if [ -z "${1:-}" ]; then
+		echo "file not set"
+		echo "First argument must be a file to benchmark as 'filename:linenr'"
+		exit 1
+	fi
+
+	file="$(echo "$1" | cut -d : -f 1)"
+	line="$(echo "$1" | cut -d : -f 2)"
+	if [ -z "$line" ] || [ "$line" = "$file" ]; then
+		echo "First argument must be a file to benchmark as 'filename:linenr'"
+		exit 1
+	fi
+
+	run_count=${2:-"100"}
+
+	RUNBENCH_OUT="$(mktemp -p "${TMPDIR:-/tmp}" testing.vim.XXXXX)"
+	export RUNBENCH_OUT
+	# TODO: option to keep this file.
+	trap 'rm "$RUNBENCH_OUT"' EXIT
+	${TEST_VIM:-vim} \
+		+"silent e $file" \
+		+"normal! ${line}G" \
+		+"let g:run_count=$run_count" \
+		-S "$tvim" \
+		+':call Tvim_BenchSyn()'
+
+	clear
+	echo
+	echo "$1"
+	lines=$(tput lines)
+	if [ $lines -gt 0 ]; then
+		# TODO: inform it's truncated.
+		head -n $(( $lines - 1 )) "$RUNBENCH_OUT"
+	else
+		cat "$RUNBENCH_OUT"
+	fi
+}
+
+_run_gen_syn() {
+	if [ -z "${1:-}" ]; then
+		>&2 echo "Must give at least one test file"
+		exit 1
+	fi
+
+	if [ $(link_pack "$@") -gt 0 ]; then
+		>&2 echo "could not locate the plugin directory for $files"
+		exit 2
+	fi
+
+	packdir="$tmpdir/pack/t/start/$(ls "$tmpdir/pack/t/start")"
+	for f in "$@"; do
+		${TEST_VIM:-vim} --noplugin -u NONE -N -e \
+			+"set shm+=WAFI rtp^=$packdir packpath=$tmpdir" \
+			+'filetype plugin indent on' \
+			+'packloadall!' \
+			+"silent e $f" \
+			+"let g:test_tmpdir='$tmpdir'" \
+			-S "$tvim" \
+			+':call Tvim_GenSyn()' >/dev/null </dev/null || (
+				echo  'TEST RUNNER FAILURE; error in syntaxtest.vim'
+				exit 5
+			)
+	done
+
+	printf '" This file is automatically generated by test-syntax from testing.vim'
+
+	cat "$tmpdir/syntax.tmp"
+}
+
+_run_help() {
+	local topic=${1:-}
+	case "$topic" in
+		test)       _usage_test ;;
+		bench-syn)  _usage_bench_syn ;;
+		gen-syn)    _usage_gen_syn ;;
+		'')
+			echo "${0##*/}: need a help topic: test, bench-syn, or gen-syn"
+			exit 1
+			;;
+		*)
+			echo "${0##*/}: unknown help topic: \`$topic'"
+			;;
+	esac
+}
+
+# Find files.
+find_files() {
+	local target=$1
+	local pattern=$2
+
+	# Find files to test.
+	if echo "$target" | grep -q '/\.\.\.$'; then
+		find_path="${target%...}"
+		find_args="-name $pattern"
+	elif [ -e "$target" ]; then
+		find_path="${target}"
+		find_args="-maxdepth 1 -name $pattern"
+	else
+		>&2 echo "no such file or directory: $target"
+		exit 1
+	fi
+
+	set -f
+	# shellcheck disable=SC2086
+	files=$(find "$find_path" $find_args)
+	set +f
+
+	if [ "$files" = "" ]; then
+		>&2 echo "no $pattern files in $target"
+		exit 3
+	fi
+
+	if [ $(link_pack $files) -gt 0 ]; then
+		>&2 echo "could not locate the plugin directory for $files"
+		exit 2
+	fi
+
+	echo $files
+}
+
+# Set up package; find the plugin's root directory and make sure that the plugin
+# we're testing is available as a package in $tmpdir.
+link_pack() {
+	mkdir -p "$tmpdir/pack/t/start"
+
+	IFS="
+"
+	for f in "$@"; do
+		local f="${f#./}"
+		local dir=$(dirname "$f")
+
+		local pack="$(cd "$dir" && pwd)"
+		while :; do
+			if [ "$pack" = "/" ]; then
+				printf 1
+				return
+			fi
+
+			if [ -d "$pack/autoload" ] || [ -d "$pack/plugin" ] || [ -d "$pack/ftplugin" ]; then
+				ln -s "$pack" "$tmpdir/pack/t/start"
+				printf 0
+				return
+			fi
+
+			pack="$(dirname "$pack")"
+		done
+	done
+
+	printf 2
+}
+
+cmd="${1:-}"
+[ -n "$cmd" ] && shift
+case "$cmd" in
+	test)       _run_test "$@" ;;
+	bench-syn)  _run_bench_syn "$@" ;;
+	gen-syn)    _run_gen_syn "$@" ;;
+	help)       _run_help "$@" ;;
+	'')         _usage_commands; exit 1 ;;
+	*)
+		echo "${0##*/}: unknown command: \`$cmd'"
+		_usage_commands
+		;;
+esac

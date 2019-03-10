@@ -71,21 +71,26 @@ And a few functions:
 	TestSyntax()      Test syntax highlighting. Usually you want to generate
 	                  this with test-syntax.
 
-testing.vim is not a Vim plugin, you can clone/download it to any location and
-run `test` and other scripts from there; or you can run it from a subdirectory
-in your plugin.
+testing.vim is not a Vim plugin. Clone/download it and run the `tvim` script to
+launch it. You can put this directory in your `PATH`, or use `make` to install
+it:
 
-Run `./test /path/to/file_test.vim` to run tests in that file, `./test
-/path/to/dir` to run all test files in a directory, or `./test/path/to/dir/...`
-to run al test files in a directory and all subdirectories.
+	$ make install                     # To /usr/local
+	$ PREFIX=~/.local make install     # Non-root install.
+
+The test of the documentation will assume `tvim` is in `PATH`.
+
+Run `tvim test path/to/file_test.vim` to run tests in that file, `tvim test
+path/to/dir` to run all test files in a directory, or `tvim test
+path/to/dir/...` to run al test files in a directory and all subdirectories.
 
 A test is considered to be "failed" when `v:errors` has any items that are not
 marked as informational (as done by `Log()`). Vim's `assert_*` functions write
 to `v:errors`, and it can be written to as any list. You don't need to use
 `Error()`.
 
-You can filter test functions to run with the `-r` option. See `./test -h` for
-various other options.
+You can filter test functions to run with the `-r` option. See `tvim help test`
+for various other options.
 
 testing.vim will run the binary form the `TEST_VIM` environment variable,
 defaulting to `vim`. Managing different Vim installations is out-of-scope for
@@ -96,8 +101,8 @@ See [gopher.vim for an example Travis integration](https://github.com/Carpetsmok
 Syntax highlighting tests
 -------------------------
 
-testing.vim includes support for testing syntax highlighting with the
-`test-syntax` script. How it works:
+You can generate tests for syntax highlighting with `tvim gen-syn`. How it
+works:
 
 1. Write a test file for the syntax to test; for example `basic.go` with the
    contents:
@@ -113,8 +118,8 @@ testing.vim includes support for testing syntax highlighting with the
 
 2. Verify that the highlighting is correct in this file.
 
-3. Run `./test-syntax path/to/basic.go`; this will generate a test script
-   recording the current syntax highlighting.
+3. Run `tvim gen-syn syntax/test/basic.go > syntax/test/go_test.vim`; this will
+   generate a test script recording the current syntax highlighting.
 
 4. Test the file as any other `_test.vim` script.
 
@@ -124,7 +129,8 @@ Benchmarks
 Benchmarks are also loaded from `*_test.vim` files. Benchmark functions match
 the pattern `Benchmark_\k+() abort`.
 
-Use the `-b` flag to select which benchmarks to run. Use `-b .` to run them all.
+Use `tvim test -b` to select which benchmarks to run. Use `-b .` to run them
+all.
 
 A benchmark is expected to run the benchmarked code `g:bench_n` number of times.
 
@@ -141,14 +147,10 @@ endfun
 
 ### Syntax highlighting benchmarks
 
-There is also a script to benchmark syntax highlighting:
-
-	./bench-syntax file.go:666
+You can benchmark syntax highlighting with `tvim bench-syntax file.go:666`.
 
 The default is to `redraw!` 100 times; this can be changed with an optional
-second argument:
-
-	./bench-syntax file.go:666 5000
+second argument: `tvim bench-syntax file.go:666 5000`.
 
 Some tips for improving performance:
 
