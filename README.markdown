@@ -1,14 +1,13 @@
-testing.vim is a small testing framework for Vim.
-
-The design is loosely inspired by Go's `testing` package.
+testing.vim is a small testing framework for Vim loosely inspired by Go's
+`testing` package.
 
 My philosophy of testing is that it should be kept as simple as feasible;
 programming is already hard enough without struggling with a poorly documented
 unintuitive testing framework. This is what makes testing.vim different from
-some other testing Vim runners/frameworks.
+some other Vim testing tools.
 
-testing.vim includes support for running benchmarks, benchmarking syntax
-highlighting files, and code coverage reports (via [covimerage][cov]).
+testing.vim includes support for testing syntax highlighting, benchmarking code
+and syntax highlighting, and coverage reports (via [covimerage][cov]).
 
 Example
 -------
@@ -58,6 +57,8 @@ testing.vim exposes several variables:
 	g:test_dir        Directory of the test file that's being run.
 	g:test_tmpdir     Empty temp directory for writing; this is also set as the
 	                  working directory before running tests.
+	g:test_packdir    Directory of the plugin in the temporary directory (this
+	                  is a link to the REAL plugin, so don't modify files!)
 	g:bench_n         Number of times to run target code during benchmark.
 
 And a few functions:
@@ -66,26 +67,29 @@ And a few functions:
 	Errorf(msg, ...)  Like Error(), but with printf() support.
 	Log(msg)          Add a "log message" in v:errors; this won't fail the test.
 	                  Useful since :echom and v:errors output isn't interleaved.
-	Logf(msg, ...)    Like Log, with with printf() support,.
+	Logf(msg, ...)    Like Log, with with printf() support.
+	TestSyntax()      Test syntax highlighting. Usually you want to generate
+	                  this with test-syntax.
 
-testing.vim is not a Vim plugin, you can just clone it to any location and run
-`test` from there; or you can run it from a subdirectory in your plugin.
+testing.vim is not a Vim plugin, you can clone/download it to any location and
+run `test` and other scripts from there; or you can run it from a subdirectory
+in your plugin.
 
 Run `./test /path/to/file_test.vim` to run tests in that file, `./test
 /path/to/dir` to run all test files in a directory, or `./test/path/to/dir/...`
 to run al test files in a directory and all subdirectories.
 
 A test is considered to be "failed" when `v:errors` has any items that are not
-marked as informational (as done by `Log()`).
-
-Vim's `assert_*` functions write to `v:errors`, and it can be written to as any
-list. You don't need to use `Error()`.
+marked as informational (as done by `Log()`). Vim's `assert_*` functions write
+to `v:errors`, and it can be written to as any list. You don't need to use
+`Error()`.
 
 You can filter test functions to run with the `-r` option. See `./test -h` for
 various other options.
 
-testing.vim will always use the `vim` from `PATH` to run tests; prepend a
-different PATH to run a different `vim`.
+testing.vim will run the binary form the `TEST_VIM` environment variable,
+defaulting to `vim`. Managing different Vim installations is out-of-scope for
+this project.
 
 See [gopher.vim for an example Travis integration](https://github.com/Carpetsmoker/gopher.vim/blob/master/.travis.yml).
 
@@ -93,33 +97,31 @@ Syntax highlighting tests
 -------------------------
 
 testing.vim includes support for testing syntax highlighting with the
-`test-syntax` script.
+`test-syntax` script. How it works:
 
-How it works:
+1. Write a test file for the syntax to test; for example `basic.go` with the
+   contents:
 
-- Write a test file for the syntax to test; for example `basic.go` with the
-  contents:
+       package main
 
-      package main
+       import "fmt"
 
-      import "fmt"
+       func main() {
+       	var msg = "Let's go!"
+       	fmt.Println(msg)
+       }
 
-      func main() {
-      	var msg = "Let's go!"
-      	fmt.Println(msg)
-      }
+2. Verify that the highlighting is correct in this file.
 
-- Verify that the highlighting is correct in this file.
+3. Run `./test-syntax path/to/basic.go`; this will generate a test script
+   recording the current syntax highlighting.
 
-- Run `./test-syntax path/to/basic.go`; this will generate a test script
-  detailing the current syntax highlighting.
-
-- Test the file as any other `_test.vim` script.
+4. Test the file as any other `_test.vim` script.
 
 Benchmarks
 ----------
 
-Benchmarks are also loaded from `n_test.vim` files. Benchmark functions match
+Benchmarks are also loaded from `*_test.vim` files. Benchmark functions match
 the pattern `Benchmark_\k+() abort`.
 
 Use the `-b` flag to select which benchmarks to run. Use `-b .` to run them all.
@@ -139,7 +141,7 @@ endfun
 
 ### Syntax highlighting benchmarks
 
-There is also a small script to benchmark syntax highlighting:
+There is also a script to benchmark syntax highlighting:
 
 	./bench-syntax file.go:666
 
@@ -186,7 +188,7 @@ Rationale
 
 My requirements:
 
-1. Easy to run test, including just a single test function.)
+1. Easy to run test, including just a single test function.
 2. Easy to see what failed *exactly*.
 3. Easy to debug failing tests, e.g. with printf-debugging.
 4. Reasonably intuitive for anyone familiar with VimScript.

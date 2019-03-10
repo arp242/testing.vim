@@ -16,7 +16,7 @@ if [ $(link_pack "$@") -gt 0 ]; then
 fi
 
 for f in "$@"; do
-	vim --noplugin -u NONE -N -e \
+	${TEST_VIM:-vim} --noplugin -u NONE -N -e \
 		+"set shm+=WAFI rtp^=$testingdir packpath=$tmpdir" \
 		+'filetype plugin indent on' \
 		+'packloadall!' \

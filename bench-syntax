@@ -21,7 +21,7 @@ run_count=${2:-"100"}
 RUNBENCH_OUT="$(mktemp -p "${TMPDIR:-/tmp}" testing.vim.XXXXX)"
 export RUNBENCH_OUT
 trap 'rm "$RUNBENCH_OUT"' EXIT
-vim \
+${TEST_VIM:-vim} \
 	+"silent e $file" \
 	+"normal! ${line}G" \
 	+"let g:run_count=$run_count" \

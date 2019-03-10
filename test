@@ -9,27 +9,30 @@ _usage() {
 	echo "Usage: ${0##*/} [-hvVc] [-r pattern] [-b path] [-p path] target"
 	echo
 	echo "Options:"
-	echo "  -h       Show this help."
+	echo "  -h         Show this help."
 	echo
-	echo "  -v       Enable verbose output."
+	echo "  -v         Enable verbose output."
 	echo
-	echo "  -V       Run vim with -V20 (very verbose)."
+	echo "  -V         Run vim with -V20 (very verbose)."
 	echo
-	echo "  -r patt  Run only the test functions matching the pattern. Patterns are"
-	echo "           matched against the full function name (including Test_) with =~#"
+	echo "  -r patt    Run only the test functions matching the pattern. Patterns are"
+	echo "             matched against the function name (including Test_) with =~#"
 	echo
-	echo "  -b patt  Run benchmarks functions matching this patterns. Patterns are"
-	echo "           matched against the full function name (including Benchmark_) with =~#"
+	echo "  -b patt    Run benchmarks functions matching this patterns. Patterns are"
+	echo "             matched against the function name (including Benchmark_) with =~#"
 	echo
-	echo "  -c       Report code coverage. This depends on covimerage being in PATH:"
-	echo "           https://github.com/Vimjas/covimerage"
+	echo "  -c         Report code coverage. This requires covimerage in PATH:"
+	echo "             https://github.com/Vimjas/covimerage"
 	echo
-	echo "  -p path  Write code coverage profile to path. This is a Coverage.py XML file:"
-	echo "           https://github.com/nedbat/coveragepy"
+	echo "  -p path    Write code coverage profile to path. This is a Coverage.py file:"
+	echo "             https://github.com/nedbat/coveragepy"
 	echo
-	echo "  target   File or directory to test. If it is a directory all *_test.vim files"
-	echo "           in that directory will be run. Test files in subdirectories will also"
-	echo "           be run if the pattern ends with '/...'"
+	echo "  target     File or directory to test. If it is a directory all *_test.vim"
+	echo "             files in that directory will be run. Test files in subdirectories"
+	echo "             will also be run if the pattern ends with '/...'"
+	echo
+	echo "Environment:"
+	echo "  TEST_VIM   Binary to use; defaults to 'vim'."
 }
 
 verbose=0
@@ -91,7 +94,7 @@ testtarget="$1"
 [ -f "$tmpdir/cov-profile.txt" ] && rm "$tmpdir/cov-profile.txt"
 [ -f "$tmpdir/cov-report.txt" ]  && rm "$tmpdir/cov-report.txt"
 
-vim_cmd=vim
+vim_cmd=${TEST_VIM:-vim}
 
 # Generate code coverage report.
 if [ "$coverage" -eq 1 ]; then
