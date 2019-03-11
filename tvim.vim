@@ -256,13 +256,13 @@ fun! Tvim_GenSyn() abort
 
 	let s:path = fnamemodify(bufname(''), ':.')
 	let s:fname = fnamemodify(bufname(''), ':t:r')
-	let s:lines = ListAllSyntax()
+	let s:lines = s:list_all_syntax()
 
 	silent! exe printf('split %s/syntax.tmp', fnameescape(g:test_tmpdir))
 	call append('$', [
 				\ '',
 				\ printf('fun! Test_%s() abort', s:fname), 
-				\ printf('    call TestSyntax(g:test_packdir . "/%s",', s:path),
+				\ printf("    call TestSyntax(g:test_packdir . '/%s',", s:path),
 				\ '        \ [',
 		\ ])
 
@@ -275,7 +275,7 @@ fun! Tvim_GenSyn() abort
 	qa!
 endfun
 
-fun! ListAllSyntax()
+fun! s:list_all_syntax()
 	let l:out = []
 
 	for l:line in range(1, line('$'))
@@ -308,7 +308,7 @@ fun! TestSyntax(file, want) abort
     exe 'e ' . fnameescape(a:file)
 
     let l:want = a:want
-    let l:out = ListAllSyntax()
+    let l:out = s:list_all_syntax()
 
     if len(l:out) != len(l:want)
       call Errorf("out has different line length (%d, want %d)\nout: %s",

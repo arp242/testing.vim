@@ -1,13 +1,6 @@
-testing.vim is a small testing framework for Vim loosely inspired by Go's
-`testing` package.
-
-My philosophy of testing is that it should be kept as simple as feasible;
-programming is already hard enough without struggling with a poorly documented
-unintuitive testing framework. This is what makes testing.vim different from
-some other Vim testing tools.
-
-testing.vim includes support for testing syntax highlighting, benchmarking code
-and syntax highlighting, and coverage reports (via [covimerage][cov]).
+testing.vim is a testing tool for Vim loosely inspired by Go's `testing`
+package. It includes support for testing syntax highlighting, benchmarking code
+and syntax highlighting, linting,  and coverage reports (via [covimerage][cov]).
 
 Example
 -------
@@ -44,8 +37,21 @@ endfun
 Usage
 -----
 
-Tests are stored in a `*_test.vim` files, all functions matching the
-`Test_\k+() abort` signature will be run.
+testing.vim is not a Vim plugin. Clone/download it and run the `tvim` script to
+launch it. You can put this directory in your `PATH`, or use `make` to install
+it:
+
+	$ make install                     # To /usr/local
+	$ PREFIX=~/.local make install     # Non-root install.
+
+The test of the documentation will assume `tvim` is in `PATH`.
+
+Run `tvim test path/to/file_test.vim` to run tests in that file, `tvim test
+path/to/dir` to run all test files in a directory, or `tvim test
+path/to/dir/...` to run al test files in a directory and all subdirectories.
+
+Tests are stored as `*_test.vim` files, all functions matching the `Test_\k+()
+abort` signature will be run.
 It is customary – but not mandatory – to store `n_test.vim` files next to the
 `n.vim` file in the same directory.
 
@@ -70,19 +76,6 @@ And a few functions:
 	Logf(msg, ...)    Like Log, with with printf() support.
 	TestSyntax()      Test syntax highlighting. Usually you want to generate
 	                  this with test-syntax.
-
-testing.vim is not a Vim plugin. Clone/download it and run the `tvim` script to
-launch it. You can put this directory in your `PATH`, or use `make` to install
-it:
-
-	$ make install                     # To /usr/local
-	$ PREFIX=~/.local make install     # Non-root install.
-
-The test of the documentation will assume `tvim` is in `PATH`.
-
-Run `tvim test path/to/file_test.vim` to run tests in that file, `tvim test
-path/to/dir` to run all test files in a directory, or `tvim test
-path/to/dir/...` to run al test files in a directory and all subdirectories.
 
 A test is considered to be "failed" when `v:errors` has any items that are not
 marked as informational (as done by `Log()`). Vim's `assert_*` functions write
@@ -122,6 +115,15 @@ works:
    generate a test script recording the current syntax highlighting.
 
 4. Test the file as any other `_test.vim` script.
+
+Linting
+-------
+
+Linting works like testing: `tvim lint ./...`.
+
+Currently supported lint tools:
+
+- [vint](https://github.com/Kuniwak/vint)
 
 Benchmarks
 ----------
@@ -177,16 +179,13 @@ Some tips for improving performance:
   But the second version is a lot faster due to the `^\s*`; The regular
   expression can stop matching much faster for most lines.
 
-Credits
--------
-
-I originally implemented this for vim-go, based on Fatih's previous work (see
-[1157][1157], [1158][1158], and [1476][1476]), which was presumably inspired by
-[runtest.vim](https://github.com/vim/vim/blob/master/src/testdir/runtest.vim) in
-the Vim source code repository.
-
 Rationale
 ---------
+
+My philosophy of testing is that it should be kept as simple as feasible;
+programming is already hard enough without struggling with a poorly documented
+unintuitive testing framework. This is what makes testing.vim different from
+some other Vim testing tools.
 
 My requirements:
 
@@ -196,6 +195,15 @@ My requirements:
 4. Reasonably intuitive for anyone familiar with VimScript.
 
 None of the existing tools met these. Some of them didn't even meet any of them!
+
+Credits
+-------
+
+I originally implemented this for vim-go, based on Fatih Arslan's previous work
+(see [1157][1157], [1158][1158], and [1476][1476]), which was presumably
+inspired by
+[runtest.vim](https://github.com/vim/vim/blob/master/src/testdir/runtest.vim)
+in the Vim source code repository.
 
 [cov]: https://github.com/Vimjas/covimerage
 [1157]: https://github.com/fatih/vim-go/pull/1157

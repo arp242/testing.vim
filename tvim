@@ -1,4 +1,7 @@
 #!/bin/sh
+#
+# testing.vim; https://github.com/Carpetsmoker/testing.vim
+#
 
 set -euC
 
@@ -10,11 +13,16 @@ tmpdir=$(mktemp -d -p "${TMPDIR:-/tmp}" testing.vim.XXXXXXX)
 mkdir -p "$tmpdir"
 trap 'rm -r "$tmpdir"' EXIT
 
-_usage_commands() {
+_err() {
+	>&2 echo "${0##*/}: $@"
+}
+
+_usage() {
 	echo "Usage: ${0##*/} command [flags]"
 	echo
 	echo "Commands:"
 	echo "  test        Run tests."
+	echo "  lint        Run linter tools."
 	echo "  bench-syn   Bench syntax highlighting."
 	echo "  gen-syn     Generate a syntax highlighting test."
 	echo "  help        Display more help about a command."
@@ -23,20 +31,10 @@ _usage_commands() {
 	echo "  TEST_VIM   Binary to use; defaults to 'vim'."
 }
 
-_usage_bench_syn() {
-	echo "Usage: ${0##*/} bench-syn"
-}
-
-_usage_gen_syn() {
-	echo "Usage: ${0##*/} gen-syn"
-}
-
 _usage_test() {
-	echo "Usage: ${0##*/} test [-hvVc] [-r pattern] [-b path] [-p path] target"
+	echo "Usage: ${0##*/} test [-vVc] [-r pattern] [-b path] [-p path] [targets...]"
 	echo
 	echo "Options:"
-	echo "  -h         Show this help."
-	echo
 	echo "  -v         Enable verbose output."
 	echo
 	echo "  -V         Run vim with -V20 (very verbose)."
@@ -53,9 +51,36 @@ _usage_test() {
 	echo "  -p path    Write code coverage profile to path. This is a Coverage.py file:"
 	echo "             https://github.com/nedbat/coveragepy"
 	echo
-	echo "  target     File or directory to test. If it is a directory all *_test.vim"
+	echo "  targets    Files or directories to test. If it is a directory all *_test.vim"
 	echo "             files in that directory will be run. Test files in subdirectories"
 	echo "             will also be run if the pattern ends with '/...'"
+}
+
+_usage_lint() {
+	echo "Usage: ${0##*/} lint [-t tools] [targets...]"
+	echo
+	echo "Options:"
+	echo "  -t [list]  Comma-separated list of tools to run; supported tools:"
+	echo "               vint: https://github.com/Kuniwak/vint"
+	echo "                     You can add a .vintrc.yaml to configure it."
+	echo
+	echo "             Default is to run all tools."
+	echo
+	echo "  targets    Files or directories to check. If it is a directory all *.vim"
+	echo "             files in that directory will be run. Files in subdirectories"
+	echo "             will also be checked if the pattern ends with '/...'"
+}
+
+_usage_bench_syn() {
+	echo "Usage: ${0##*/} bench-syn"
+	echo
+	echo "TODO"
+}
+
+_usage_gen_syn() {
+	echo "Usage: ${0##*/} gen-syn"
+	echo
+	echo "TODO"
 }
 
 _run_test() {
@@ -65,12 +90,8 @@ _run_test() {
 	profile=""
 	run=""
 	bench=""
-	while getopts "hvVcr:p:b:" option; do
+	while getopts "vVcr:p:b:" option; do
 		case "$option" in
-			h)
-				_usage
-				exit 0
-				;;
 			v) verbose=1 ;;
 			V) vim_verbose="-V20" ;;
 			r) run=$OPTARG ;;
@@ -81,8 +102,7 @@ _run_test() {
 				profile=$OPTARG
 				;;
 			*)
-				echo "error: unknown option '$option'"
-				_usage
+				_usage_test
 				exit 1
 				;;
 		esac
@@ -90,25 +110,17 @@ _run_test() {
 	shift $((OPTIND - 1))
 
 	if [ "$coverage" -eq 1 ] && ! command -v covimerage >/dev/null; then
-		echo  "covimerage tool not found; install it with:"
-		echo  "  pip install covimerage"
-		echo  "also see https://github.com/Vimjas/covimerage"
+		_err  "covimerage tool not found; install it with:"
+		_err  "  pip install covimerage"
+		_err  "also see https://github.com/Vimjas/covimerage"
 		exit  1
 	fi
 
 	# Get path
-	if [ -z "${1:-}" ]; then
-		echo "need a file or directory to test"
-		exit 1
-	fi
-
-	# TODO: allow multiple paths.
-	if  [ -n "${2:-}" ]; then
-		echo  "Only a single file or directory is supported at the moment. Sorry :-("
-		exit  1
-	fi
-
-	testtarget="$1"
+	# shellcheck disable=SC2039
+	local target="$@"
+	[ -z "$target" ] && target="."
+	test_files=$(find_files '*_test.vim' "$@")
 
 	### Run tests.
 	##############
@@ -118,21 +130,17 @@ _run_test() {
 	[ -f "$tmpdir/cov-profile.txt" ] && rm "$tmpdir/cov-profile.txt"
 	[ -f "$tmpdir/cov-report.txt" ]  && rm "$tmpdir/cov-report.txt"
 
-	vim_cmd=${TEST_VIM:-vim}
-
 	# Generate code coverage report.
+	vim_cmd=${TEST_VIM:-vim}
 	if [ "$coverage" -eq 1 ]; then
 		vim_cmd="covimerage -q run --data-file $tmpdir/cov-profile.data --report-file $tmpdir/cov-profile.txt --append $vim_cmd"
 	fi
 
 	# Run the actual tests.
-	test_files=$(find_files "$testtarget" '*_test.vim')
 	packdir="$tmpdir/pack/t/start/$(ls "$tmpdir/pack/t/start")"
 	for test_file in $test_files; do
 		IFS="$(printf ' \n')"
-
 		test_file="${test_file#./}"
-		test_dir=$(dirname "$test_file")
 
 		$vim_cmd --noplugin -u NONE -N $vim_verbose -e \
 			+"set shm+=WAFI rtp^=$packdir packpath=$tmpdir" \
@@ -154,7 +162,7 @@ _run_test() {
 			# E461: Illegal variable name: l:failedTEST RUNNER FAILURE; error in runtest.vim
 			#
 			# So try grepping that, maybe?
-			echo  'TEST RUNNER FAILURE; error in runtest.vim'
+			_err 'TEST RUNNER FAILURE; error in runtest.vim'
 			[ -f "$tmpdir/test.tmp" ] && cat "$tmpdir/test.tmp"
 			exit 5
 		)
@@ -178,17 +186,86 @@ _run_test() {
 	exit 0
 }
 
+_run_lint() {
+	# shellcheck disable=SC2039
+	local tools="vint"
+	while getopts "t:" option; do
+		case "$option" in
+			t) tools=$OPTARG ;;
+			*)
+				_lint_usage
+				exit 1
+				;;
+		esac
+	done
+	shift $((OPTIND - 1))
+
+	# shellcheck disable=SC2039
+	local target="$@"
+	[ -z "$target" ] && target="."
+	test_files=$(find_files '*.vim' "$@")
+
+	for t in $tools; do
+		case "$t" in
+			vint)        _run_lint_vint "$test_files" ;;
+			#vimlint)     _run_lint_vimlint "$test_files" ;;
+			#vimhelplint) _run_lint_vimhelplint "$test_files" ;;
+			*)
+				_err "unknown lint tool: \`$t'"
+				exit 1
+		esac
+	done
+}
+
+_run_lint_vint() {
+	# shellcheck disable=SC2039
+	local target="$1"
+
+	if [ ! -x "$(command -v vint)" ]; then
+		_err "'vint' binary not found; use 'pip install vim-vint' to install it."
+		exit 1
+	fi
+
+	vint $target
+}
+
+_run_lint_vimlint() {
+	:
+	# vimlint
+	# lint=$(sh "$vimdir/share/vim/vimgo/pack/vim-go/start/vim-vimlint/bin/vimlint.sh" \
+	# 	-p "$vimdir/share/vim/vimgo/pack/vim-go/start/vim-vimlparser" \
+	# 	-l "$vimdir/share/vim/vimgo/pack/vim-go/start/vim-vimlint" \
+	# 	-u \
+	# 	-c func_abort=1 \
+	# 	-e EVL110=1 -e EVL103=1 -e EVL104=1 -e EVL102=1 \
+	# 	"$vimgodir" \
+	# 	2>&1 ||:)
+}
+
+_run_lint_vimhelplint() {
+	:
+	# vimhelplint
+	# lint=$($vimdir/bin/vim -esNR \
+	# 	--cmd "set rtp+=$vimdir/share/vim/vimgo/pack/vim-go/start/vim-vimhelplint/" \
+	# 	--cmd 'set modeline' \
+	# 	+'filetype plugin on' \
+	# 	+"e $vimgodir/doc/vim-go.txt" \
+	# 	+'verbose VimhelpLintEcho' \
+	# 	+q \
+	# 	2>&1 ||:)
+}
+
 _run_bench_syn() {
 	if [ -z "${1:-}" ]; then
-		echo "file not set"
-		echo "First argument must be a file to benchmark as 'filename:linenr'"
+		_err "file not set"
+		_err "First argument must be a file to benchmark as 'filename:linenr'"
 		exit 1
 	fi
 
 	file="$(echo "$1" | cut -d : -f 1)"
 	line="$(echo "$1" | cut -d : -f 2)"
 	if [ -z "$line" ] || [ "$line" = "$file" ]; then
-		echo "First argument must be a file to benchmark as 'filename:linenr'"
+		_err "First argument must be a file to benchmark as 'filename:linenr'"
 		exit 1
 	fi
 
@@ -209,9 +286,9 @@ _run_bench_syn() {
 	echo
 	echo "$1"
 	lines=$(tput lines)
-	if [ $lines -gt 0 ]; then
+	if [ "$lines" -gt 0 ]; then
 		# TODO: inform it's truncated.
-		head -n $(( $lines - 1 )) "$RUNBENCH_OUT"
+		head -n $((lines - 1)) "$RUNBENCH_OUT"
 	else
 		cat "$RUNBENCH_OUT"
 	fi
@@ -219,12 +296,12 @@ _run_bench_syn() {
 
 _run_gen_syn() {
 	if [ -z "${1:-}" ]; then
-		>&2 echo "Must give at least one test file"
+		_err "must give at least one test file"
 		exit 1
 	fi
 
-	if [ $(link_pack "$@") -gt 0 ]; then
-		>&2 echo "could not locate the plugin directory for $files"
+	if [ "$(link_pack "$@")" -gt 0 ]; then
+		_err "could not locate the plugin directory for $@"
 		exit 2
 	fi
 
@@ -238,7 +315,7 @@ _run_gen_syn() {
 			+"let g:test_tmpdir='$tmpdir'" \
 			-S "$tvim" \
 			+':call Tvim_GenSyn()' >/dev/null </dev/null || (
-				echo  'TEST RUNNER FAILURE; error in syntaxtest.vim'
+				_err 'TEST RUNNER FAILURE; error in syntaxtest.vim'
 				exit 5
 			)
 	done
@@ -249,54 +326,66 @@ _run_gen_syn() {
 }
 
 _run_help() {
+	# shellcheck disable=SC2039
 	local topic=${1:-}
 	case "$topic" in
 		test)       _usage_test ;;
+		lint)       _usage_lint ;;
 		bench-syn)  _usage_bench_syn ;;
 		gen-syn)    _usage_gen_syn ;;
-		'')
-			echo "${0##*/}: need a help topic: test, bench-syn, or gen-syn"
-			exit 1
-			;;
+		'')         _usage ;;
 		*)
-			echo "${0##*/}: unknown help topic: \`$topic'"
+			_err "unknown help topic: \`$topic'"
+			_usage
 			;;
 	esac
 }
 
 # Find files.
 find_files() {
-	local target=$1
-	local pattern=$2
+	# shellcheck disable=SC2039
+	local pattern=$1
+	shift
 
-	# Find files to test.
-	if echo "$target" | grep -q '/\.\.\.$'; then
-		find_path="${target%...}"
-		find_args="-name $pattern"
-	elif [ -e "$target" ]; then
-		find_path="${target}"
-		find_args="-maxdepth 1 -name $pattern"
-	else
-		>&2 echo "no such file or directory: $target"
-		exit 1
-	fi
+	# shellcheck disable=SC2039
+	local target="$@"
 
-	set -f
-	# shellcheck disable=SC2086
-	files=$(find "$find_path" $find_args)
-	set +f
+	# shellcheck disable=SC2039
+	local files=""
+	for t in $target; do
+		# Path ends with /...: expand.
+		if echo "$t" | grep -q '/\.\.\.$'; then
+			find_path="${t%...}"
+			find_args="-name $pattern"
+		# File or directory.
+		elif [ -e "$t" ]; then
+			find_path="${t}"
+			find_args="-maxdepth 1 -name $pattern"
+		else
+			_err "no such file or directory: $t"
+			exit 1
+		fi
+
+		set -f
+		# shellcheck disable=SC2086
+		files="$files $(find "$find_path" $find_args)"
+		set +f
+	done
 
 	if [ "$files" = "" ]; then
-		>&2 echo "no $pattern files in $target"
+		_err "no $pattern files in $target"
 		exit 3
 	fi
 
-	if [ $(link_pack $files) -gt 0 ]; then
-		>&2 echo "could not locate the plugin directory for $files"
+	# shellcheck disable=SC2086
+	set -f
+	if [ "$(link_pack $files)" -gt 0 ]; then
+		_err "could not locate the plugin directory for $target"
 		exit 2
 	fi
+	set +f
 
-	echo $files
+	echo "$files"
 }
 
 # Set up package; find the plugin's root directory and make sure that the plugin
@@ -307,10 +396,15 @@ link_pack() {
 	IFS="
 "
 	for f in "$@"; do
+		# shellcheck disable=SC2039
 		local f="${f#./}"
-		local dir=$(dirname "$f")
+		# shellcheck disable=SC2039
+		local dir
+		dir="$(dirname "$f")"
 
-		local pack="$(cd "$dir" && pwd)"
+		# shellcheck disable=SC2039
+		local pack
+		pack="$(cd "$dir" && pwd)"
 		while :; do
 			if [ "$pack" = "/" ]; then
 				printf 1
@@ -334,12 +428,13 @@ cmd="${1:-}"
 [ -n "$cmd" ] && shift
 case "$cmd" in
 	test)       _run_test "$@" ;;
+	lint)       _run_lint "$@" ;;
 	bench-syn)  _run_bench_syn "$@" ;;
 	gen-syn)    _run_gen_syn "$@" ;;
 	help)       _run_help "$@" ;;
-	'')         _usage_commands; exit 1 ;;
+	'')         _usage; exit 1 ;;
 	*)
-		echo "${0##*/}: unknown command: \`$cmd'"
-		_usage_commands
+		_err "unknown command: \`$cmd'"
+		_usage
 		;;
 esac
