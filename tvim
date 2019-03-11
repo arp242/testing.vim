@@ -180,7 +180,7 @@ _run_test() {
 
 	if [ -n "$profile" ]; then
 		covimerage xml --omit '*_test.vim' --data-file "$tmpdir/cov-profile.data"
-		mv coverage.xml "$profile"
+		[ "$profile" != "coverage.xml" ] && mv coverage.xml "$profile"
 	fi
 
 	exit 0
