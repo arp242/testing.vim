@@ -32,12 +32,14 @@ _usage() {
 }
 
 _usage_test() {
-	echo "Usage: ${0##*/} test [-vVc] [-r pattern] [-b path] [-p path] [targets...]"
+	echo "Usage: ${0##*/} test [-vVdc] [-r pattern] [-b path] [-p path] [targets...]"
 	echo
 	echo "Options:"
 	echo "  -v         Enable verbose output."
 	echo
 	echo "  -V         Run vim with -V20 (very verbose)."
+	echo
+	echo "  -d         Debug: don't quit Vim after running the tests."
 	echo
 	echo "  -r patt    Run only the test functions matching the pattern. Patterns are"
 	echo "             matched against the function name (including Test_) with =~#"
@@ -84,19 +86,21 @@ _usage_gen_syn() {
 }
 
 _run_test() {
-	verbose=0
-	vim_verbose=""
-	coverage=0
-	profile=""
-	run=""
-	bench=""
-	while getopts "vVcr:p:b:" option; do
+	local verbose=0
+	local coverage=0
+	local debug=0
+	local vim_verbose=""
+	local profile=""
+	local run=""
+	local bench=""
+	while getopts "vVcr:p:b:d" option; do
 		case "$option" in
 			v) verbose=1 ;;
 			V) vim_verbose="-V20" ;;
 			r) run=$OPTARG ;;
 			b) bench=$OPTARG ;;
 			c) coverage=1 ;;
+			d) debug=1 ;;
 			p)
 				coverage=1
 				profile=$OPTARG
@@ -136,21 +140,28 @@ _run_test() {
 		vim_cmd="covimerage -q run --data-file $tmpdir/cov-profile.data --report-file $tmpdir/cov-profile.txt --append $vim_cmd"
 	fi
 
+	local ex_mode="-e"
+	local stdin="/dev/null"
+	if [ "$debug" -gt 0 ]; then
+		local ex_mode=""
+		local stdin="/dev/stdin"  # TODO: not sure how cross-platform this is?
+	fi
+
 	# Run the actual tests.
 	packdir="$tmpdir/pack/t/start/$(ls "$tmpdir/pack/t/start")"
 	for test_file in $test_files; do
 		IFS="$(printf ' \n')"
 		test_file="${test_file#./}"
 
-		$vim_cmd --noplugin -u NONE -N $vim_verbose -e \
+		$vim_cmd --noplugin -u NONE -N $vim_verbose $ex_mode \
 			+"set shm+=WAFI rtp^=$packdir packpath=$tmpdir" \
 			+'packloadall!' \
 			+"silent e $test_file" \
-			+"let g:test_verbose=$verbose" \
+			+"let g:test_verbose=$verbose | let g:test_debug=$debug" \
 			+"let g:test_tmpdir='$tmpdir' | let g:test_packdir='$packdir'" \
 			+"let g:test_run='$run' | let g:test_bench='$bench'" \
 			-S "$tvim" \
-			+':call Tvim_Test()' </dev/null || (
+			+':call Tvim_Test()' <$stdin || (
 			# If Vim exits with non-0 it's almost certainly a bug in the test runner;
 			# should never happen in normal usage.
 			# TODO: not all messages are always shown; i.e. if the error is "too

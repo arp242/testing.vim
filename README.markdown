@@ -58,6 +58,7 @@ It is customary – but not mandatory – to store `n_test.vim` files next to th
 testing.vim exposes several variables:
 
 	g:test_verbose    -v flag from commandline (0 or 1).
+	g:test_debug      -d flag from commandline (0 or 1).
 	g:test_run        -r flag from commandline, as a string.
 	g:test_bench      -b flag from commandline, as a string.
 	g:test_dir        Directory of the test file that's being run.

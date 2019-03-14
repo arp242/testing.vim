@@ -21,6 +21,7 @@ fun! Tvim_Test()
 
 	" Options from arguments.
 	let g:test_verbose = get(g:, 'test_verbose', 0)
+	let g:test_debug   = get(g:, 'test_debug', 0)
 	let s:tmp          = g:test_tmpdir
 	let g:test_tmpdir  = s:tmp . '/tmp'
 
@@ -234,7 +235,9 @@ fun! Tvim_Test()
 		call s:run_benchmarks()
 	endif
 
-	qall!
+	if !g:test_debug
+		qall!
+	endif
 endfun
 
 fun! Tvim_BenchSyn() abort
