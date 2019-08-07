@@ -1,36 +1,37 @@
-testing.vim is a testing tool for Vim loosely inspired by Go's `testing`
-package. It includes support for testing syntax highlighting, benchmarking code
-and syntax highlighting, linting,  and coverage reports (via [covimerage][cov]).
+testing.vim is a testing tool for Vim with a design loosely inspired by Go's
+`testing` package. It includes support for testing syntax highlighting,
+benchmarking, and syntax highlighting, linting,  and coverage reports (via
+[covimerage][cov]).
 
 Example
 -------
 
 Annotated example test function
-([original](https://github.com/Carpetsmoker/gopher.vim/blob/acb9e38/autoload/gopher/internal_test.vim#L25-L39)):
+([original](https://github.com/arp242/gopher.vim/blob/acb9e38/autoload/gopher/internal_test.vim#L25-L39)):
 
 ```vim
 fun! Test_cursor_offset() abort
-	" Create a new bufer, and add three lines to it. Make sure the cursor is on
-	" the third line.
-	new
-	call append(0, ['€', 'aaa', 'bbb'])
-	call cursor(3, 0)
+    " Create a new bufer, and add three lines to it. Make sure the cursor is on
+    " the third line.
+    new
+    call append(0, ['€', 'aaa', 'bbb'])
+    call cursor(3, 0)
 
-	" Call the function we want to test and ensure we have the correct output.
-	let l:out = gopher#internal#cursor_offset()
-	call assert_equal(8, l:out)
+    " Call the function we want to test and ensure we have the correct output.
+    let l:out = gopher#internal#cursor_offset()
+    call assert_equal(8, l:out)
 
-	" Again with a different parameter.
-	let l:out = gopher#internal#cursor_offset(1)
-	call assert_equal(':#8', l:out)
+    " Again with a different parameter.
+    let l:out = gopher#internal#cursor_offset(1)
+    call assert_equal(':#8', l:out)
 
-	" Write the buffer; it's chdir()'ed to a tmp dir, so it's fine to just write
-	" stuff.
-	silent w off
+    " Write the buffer; it's chdir()'ed to a tmp dir, so it's fine to just write
+    " stuff.
+    silent w off
 
-	" Ensure filename is added.
-	let l:out = gopher#internal#cursor_offset(1)
-	call assert_equal(g:test_tmpdir . '/off:#8', l:out)
+    " Ensure filename is added.
+    let l:out = gopher#internal#cursor_offset(1)
+    call assert_equal(g:test_tmpdir . '/off:#8', l:out)
 endfun
 ```
 
@@ -41,8 +42,8 @@ testing.vim is not a Vim plugin. Clone/download it and run the `tvim` script to
 launch it. You can put this directory in your `PATH`, or use `make` to install
 it:
 
-	$ make install                     # To /usr/local
-	$ PREFIX=~/.local make install     # Non-root install.
+    $ make install                     # To /usr/local
+    $ PREFIX=~/.local make install     # Non-root install.
 
 The test of the documentation will assume `tvim` is in `PATH`.
 
@@ -57,26 +58,26 @@ It is customary – but not mandatory – to store `n_test.vim` files next to th
 
 testing.vim exposes several variables:
 
-	g:test_verbose    -v flag from commandline (0 or 1).
-	g:test_debug      -d flag from commandline (0 or 1).
-	g:test_run        -r flag from commandline, as a string.
-	g:test_bench      -b flag from commandline, as a string.
-	g:test_dir        Directory of the test file that's being run.
-	g:test_tmpdir     Empty temp directory for writing; this is also set as the
-	                  working directory before running tests.
-	g:test_packdir    Directory of the plugin in the temporary directory (this
-	                  is a link to the REAL plugin, so don't modify files!)
-	g:bench_n         Number of times to run target code during benchmark.
+    g:test_verbose    -v flag from commandline (0 or 1).
+    g:test_debug      -d flag from commandline (0 or 1).
+    g:test_run        -r flag from commandline, as a string.
+    g:test_bench      -b flag from commandline, as a string.
+    g:test_dir        Directory of the test file that's being run.
+    g:test_tmpdir     Empty temp directory for writing; this is also set as the
+                      working directory before running tests.
+    g:test_packdir    Directory of the plugin in the temporary directory (this
+                      is a link to the REAL plugin, so don't modify files!)
+    g:bench_n         Number of times to run target code during benchmark.
 
 And a few functions:
 
-	Error(msg)        Add a message to v:errors.
-	Errorf(msg, ...)  Like Error(), but with printf() support.
-	Log(msg)          Add a "log message" in v:errors; this won't fail the test.
-	                  Useful since :echom and v:errors output isn't interleaved.
-	Logf(msg, ...)    Like Log, with with printf() support.
-	TestSyntax()      Test syntax highlighting. Usually you want to generate
-	                  this with test-syntax.
+    Error(msg)        Add a message to v:errors.
+    Errorf(msg, ...)  Like Error(), but with printf() support.
+    Log(msg)          Add a "log message" in v:errors; this won't fail the test.
+                      Useful since :echom and v:errors output isn't interleaved.
+    Logf(msg, ...)    Like Log, with with printf() support.
+    TestSyntax()      Test syntax highlighting. Usually you want to generate
+                      this with test-syntax.
 
 A test is considered to be "failed" when `v:errors` has any items that are not
 marked as informational (as done by `Log()`). Vim's `assert_*` functions write
@@ -90,7 +91,7 @@ testing.vim will run the binary form the `TEST_VIM` environment variable,
 defaulting to `vim`. Managing different Vim installations is out-of-scope for
 this project.
 
-See [gopher.vim for an example Travis integration](https://github.com/Carpetsmoker/gopher.vim/blob/master/.travis.yml).
+See [gopher.vim for an example Travis integration](https://github.com/arp242/gopher.vim/blob/master/.travis.yml).
 
 Syntax highlighting tests
 -------------------------
@@ -106,8 +107,8 @@ works:
        import "fmt"
 
        func main() {
-       	var msg = "Let's go!"
-       	fmt.Println(msg)
+           var msg = "Let's go!"
+           fmt.Println(msg)
        }
 
 2. Verify that the highlighting is correct in this file.
@@ -150,12 +151,13 @@ endfun
 
 ### Syntax highlighting benchmarks
 
-You can benchmark syntax highlighting with `tvim bench-syntax file.go:666`.
+You can benchmark syntax highlighting with `tvim bench-syntax file.go:666`. The
+`666` refers to the line number to jump to before running the benchmark.
 
 The default is to `redraw!` 100 times; this can be changed with an optional
 second argument: `tvim bench-syntax file.go:666 5000`.
 
-Some tips for improving performance:
+### Tips for improving performance:
 
 - Try to reduce the `COUNT`; a lot of syntax can only appear in certain places,
   so there is no need for Vim to look on every line. For example:
@@ -166,13 +168,13 @@ Some tips for improving performance:
   this:
 
       syn region goBuildTag contained [..]
-	  syn region goComment start="//" end="$" contains=goBuildTag
+      syn region goComment start="//" end="$" contains=goBuildTag
 
   Will be faster, as Vim won't have to look for the pattern on most lines of the
   file, just files that are already marked as `goComment`.
 
 - Make the regexp "fail" as soon as possible, for example these two are
-  effectively identical in behaviour:
+  identical in behaviour:
 
       syn match       goSingleDecl      /\(import\|var\|const\) [^(]\@=/
       syn match       goSingleDecl      /^\s*\(import\|var\|const\) [^(]\@=/
@@ -202,11 +204,10 @@ Credits
 
 I originally implemented this for vim-go, based on Fatih Arslan's previous work
 (see [1157][1157], [1158][1158], and [1476][1476]), which was presumably
-inspired by
-[runtest.vim](https://github.com/vim/vim/blob/master/src/testdir/runtest.vim)
-in the Vim source code repository.
+inspired by [runtest.vim][runtest] in the Vim source code repository.
 
 [cov]: https://github.com/Vimjas/covimerage
 [1157]: https://github.com/fatih/vim-go/pull/1157
 [1158]: https://github.com/fatih/vim-go/pull/1158
 [1476]: https://github.com/fatih/vim-go/pull/1476
+[runtest]: https://github.com/vim/vim/blob/master/src/testdir/runtest.vim

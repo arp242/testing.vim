@@ -123,6 +123,7 @@ fun! Tvim_Test()
 					if type(l:err) is v:t_list && l:err[0] is# s:log_marker
 						let l:errors[l:i] = l:err[1]
 					else
+						let l:errors[l:i] = printf('%s: %s', fnamemodify(s:testfile, ':t'), l:err)
 						let l:failed = 1
 						let l:fail += 1
 
@@ -139,7 +140,7 @@ fun! Tvim_Test()
 				" Remove function name from start of errors and indent.
 				let l:errors = map(l:errors,
 					\ {i, v -> substitute(l:v, '^function ' . l:test . ' ', '', '')})
-				
+
 				" Support messages with newlines.
 				let l:experr = []
 				for l:err in l:errors
@@ -176,7 +177,7 @@ fun! Tvim_Test()
 
 		let l:total_elapsed_time = s:since(s:total_started)
 		call add(s:logs, printf('%s %s %s  %s tests  %ss',
-				\ (l:fail > 0 ? 'FAIL' : 'ok  '),
+				\ (l:fail > 0 ? 'FAIL' : (len(l:tests) is 0 ? '?   ' : 'ok  ')),
 				\ s:testfile,
 				\ repeat(' ', 25 - len(s:testfile)),
 				\ l:done, l:total_elapsed_time))

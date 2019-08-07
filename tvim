@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# testing.vim; https://github.com/Carpetsmoker/testing.vim
+# testing.vim; https://github.com/arp242/testing.vim
 #
 
 set -euC
@@ -74,15 +74,23 @@ _usage_lint() {
 }
 
 _usage_bench_syn() {
-	echo "Usage: ${0##*/} bench-syn"
+	echo "Usage: ${0##*/} bench-syn [path] [count]"
 	echo
-	echo "TODO"
+	echo "Benchmark a syntax highlighting file."
+	echo
+	echo "Options:"
+	echo "  path       Path to a file to test followed by : and the line number."
+	echo "             For example, 'test.py:100'. This will open test.py, set"
+	echo "             the syntax option, go to line 100, and then redraw!"
+	echo "             [count] times."
+	echo "  "
+	echo "  count      Number of times to redraw!; default us 20."
 }
 
 _usage_gen_syn() {
-	echo "Usage: ${0##*/} gen-syn"
+	echo "Usage: ${0##*/} gen-syn [path]"
 	echo
-	echo "TODO"
+	echo "Generate a syntax highlighting test for the given path."
 }
 
 _run_test() {
@@ -268,8 +276,8 @@ _run_lint_vimhelplint() {
 
 _run_bench_syn() {
 	if [ -z "${1:-}" ]; then
-		_err "file not set"
-		_err "First argument must be a file to benchmark as 'filename:linenr'"
+		_err "file not set; first argument must be a file to benchmark as 'path:line'"
+		_usage_bench_syn
 		exit 1
 	fi
 
