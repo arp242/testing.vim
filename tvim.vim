@@ -171,6 +171,7 @@ fun! Tvim_Test()
 		if l:fail > 0
 			exe printf('split %s/FAILED', fnameescape(s:tmp))
 			silent write
+			close
 		endif
 
 		call s:log_messages('')
