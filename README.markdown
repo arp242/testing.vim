@@ -87,11 +87,15 @@ to `v:errors`, and it can be written to as any list. You don't need to use
 You can filter test functions to run with the `-r` option. See `tvim help test`
 for various other options.
 
+Another very useful option is `-d`, which will leave the Vim instance used to
+run the tests open so you can use this to inspect the state. Very useful if you
+don't understand why a test fails.
+
 testing.vim will run the binary form the `TEST_VIM` environment variable,
 defaulting to `vim`. Managing different Vim installations is out-of-scope for
 this project.
 
-See [gopher.vim for an example Travis integration](https://github.com/arp242/gopher.vim/blob/master/.travis.yml).
+See e.g. [jumpy.vim for an example Travis integration](https://github.com/arp242/jumpy.vim/blob/master/.travis.yml)
 
 Syntax highlighting tests
 -------------------------

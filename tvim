@@ -162,7 +162,7 @@ _run_test() {
 		test_file="${test_file#./}"
 
 		$vim_cmd --noplugin -u NONE -N $vim_verbose $ex_mode \
-			+"set shm+=WAFI rtp^=$packdir packpath=$tmpdir" \
+			+"set shm+=WAFI rtp^=$packdir rtp+=$packdir/after packpath=$tmpdir" \
 			+'packloadall!' \
 			+"silent e $test_file" \
 			+"let g:test_verbose=$verbose | let g:test_debug=$debug" \
@@ -327,7 +327,7 @@ _run_gen_syn() {
 	packdir="$tmpdir/pack/t/start/$(ls "$tmpdir/pack/t/start")"
 	for f in "$@"; do
 		${TEST_VIM:-vim} --noplugin -u NONE -N -e \
-			+"set shm+=WAFI rtp^=$packdir packpath=$tmpdir" \
+			+"set shm+=WAFI rtp^=$packdir rtp+=$packdir/after packpath=$tmpdir" \
 			+'filetype plugin indent on' \
 			+'packloadall!' \
 			+"silent e $f" \
