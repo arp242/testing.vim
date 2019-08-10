@@ -212,7 +212,7 @@ _run_lint() {
 		case "$option" in
 			t) tools=$OPTARG ;;
 			*)
-				_lint_usage
+				_usage_lint
 				exit 1
 				;;
 		esac
@@ -375,7 +375,7 @@ find_files() {
 		# Path ends with /...: expand.
 		if echo "$t" | grep -q '/\.\.\.$'; then
 			find_path="${t%...}"
-			find_args="-name $pattern"
+			find_args="-name $pattern -a ! -path */testdata/*"
 		# File or directory.
 		elif [ -e "$t" ]; then
 			find_path="${t}"

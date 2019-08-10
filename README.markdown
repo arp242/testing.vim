@@ -49,7 +49,8 @@ The test of the documentation will assume `tvim` is in `PATH`.
 
 Run `tvim test path/to/file_test.vim` to run tests in that file, `tvim test
 path/to/dir` to run all test files in a directory, or `tvim test
-path/to/dir/...` to run al test files in a directory and all subdirectories.
+path/to/dir/...` to run al test files in a directory and all subdirectories,
+excluding `testdata` directories.
 
 Tests are stored as `*_test.vim` files, all functions matching the `Test_\k+()
 abort` signature will be run.
