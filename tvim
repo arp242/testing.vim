@@ -148,7 +148,7 @@ _run_test() {
 		vim_cmd="covimerage -q run --data-file $tmpdir/cov-profile.data --report-file $tmpdir/cov-profile.txt --append $vim_cmd"
 	fi
 
-	local ex_mode="-e"
+	local ex_mode="-es"
 	local stdin="/dev/null"
 	if [ "$debug" -gt 0 ]; then
 		local ex_mode=""
@@ -181,7 +181,7 @@ _run_test() {
 			# E461: Illegal variable name: l:failedTEST RUNNER FAILURE; error in runtest.vim
 			#
 			# So try grepping that, maybe?
-			_err 'TEST RUNNER FAILURE; error in runtest.vim'
+			_err 'TEST RUNNER FAILURE; error in tvim.vim'
 			[ -f "$tmpdir/test.tmp" ] && cat "$tmpdir/test.tmp"
 			exit 5
 		)
@@ -334,7 +334,7 @@ _run_gen_syn() {
 			+"let g:test_tmpdir='$tmpdir'" \
 			-S "$tvim" \
 			+':call Tvim_GenSyn()' >/dev/null </dev/null || (
-				_err 'TEST RUNNER FAILURE; error in syntaxtest.vim'
+				_err 'TEST RUNNER FAILURE; error in tvim.vim'
 				exit 5
 			)
 	done
