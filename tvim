@@ -304,13 +304,17 @@ _run_bench_syn() {
 	clear
 	echo
 	echo "$1"
-	lines=$(tput lines)
-	if [ "$lines" -gt 0 ]; then
-		# TODO: inform it's truncated.
-		head -n $((lines - 1)) "$RUNBENCH_OUT"
-	else
+
+	lines=$(wc -l "$RUNBENCH_OUT" | cut -d' ' -f1)
+	th=$(tput lines)
+	if [ "$th" -eq 0 ] || [ "$lines" -lt "$th" ]; then
 		cat "$RUNBENCH_OUT"
+		return
 	fi
+
+	head -n $((th - 2)) "$RUNBENCH_OUT"
+	tail -n1 "$RUNBENCH_OUT" | tr -d '\n'
+	echo "         [ Note: $(( $lines - $th )) lines trimmed ]"
 }
 
 _run_gen_syn() {
